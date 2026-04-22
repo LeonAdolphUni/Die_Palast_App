@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Die Palast App</title>
     <meta name="description" content="Die Palast App – Putzplan & Einkaufsliste">
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=13">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -47,24 +47,29 @@
                 </div>
                 <div class="menu-grid">
                     <button class="menu-card glass-card" id="menu-putzplan-btn">
-                        <div class="menu-card-dot" style="background: var(--primary);">🧹</div>
+                        <div class="menu-card-dot" style="background: var(--primary);"></div>
                         <h2 class="menu-card-title">Putzplan</h2>
                         <p class="menu-card-desc">Check deine Aufgaben für diese Woche.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-shopping-btn">
-                        <div class="menu-card-dot" style="background: var(--success);">🛒</div>
+                        <div class="menu-card-dot" style="background: var(--success);"></div>
                         <h2 class="menu-card-title">Einkauf</h2>
                         <p class="menu-card-desc">Was fehlt noch im Kühlschrank?</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-finance-btn">
-                        <div class="menu-card-dot" style="background: var(--warning);">💸</div>
+                        <div class="menu-card-dot" style="background: var(--warning);"></div>
                         <h2 class="menu-card-title">Finanzen</h2>
                         <p class="menu-card-desc">Ausgaben fair in der WG teilen.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-profile-btn">
-                        <div class="menu-card-dot" style="background: #bf5af2;">👤</div>
+                        <div class="menu-card-dot" style="background: #bf5af2;"></div>
                         <h2 class="menu-card-title">Profil</h2>
                         <p class="menu-card-desc">PayPal & Einstellungen verwalten.</p>
+                    </button>
+                    <button class="menu-card glass-card" id="menu-admin-btn" style="display: none;">
+                        <div class="menu-card-dot" style="background: #8e8e93;"></div>
+                        <h2 class="menu-card-title">Admin</h2>
+                        <p class="menu-card-desc">WG-Einstellungen.</p>
                     </button>
                 </div>
             </main>
@@ -80,11 +85,6 @@
                 </div>
             </nav>
             <main class="page">
-                <div class="view-toggle glass-card">
-                    <button id="view-week-btn" class="view-toggle-btn active">Woche</button>
-                    <button id="view-month-btn" class="view-toggle-btn">Monat</button>
-                </div>
-
                 <header class="week-header">
                     <button id="prev-week-btn" class="btn-icon">◀</button>
                     <div class="week-info">
@@ -94,35 +94,26 @@
                     <button id="next-week-btn" class="btn-icon">▶</button>
                 </header>
 
-                <div id="putzplan-week-view">
-                    <div class="my-task glass-card highlight-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="margin: 0;">Deine Aufgabe</h3>
-                            <label class="checkbox-container">
-                                <input type="checkbox" id="task-done-checkbox">
-                                <span class="checkmark"></span>
-                                Erledigt
-                            </label>
-                        </div>
-                        <div class="task-content">
-                            <div class="task-icon" id="my-task-icon">🧹</div>
-                            <div class="task-details">
-                                <h4 id="my-task-title">Lade...</h4>
-                                <p id="my-task-desc"></p>
-                            </div>
+                <div class="my-task glass-card highlight-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h3 style="margin: 0;">Deine Aufgabe</h3>
+                        <label class="checkbox-container">
+                            <input type="checkbox" id="task-done-checkbox">
+                            <span class="checkmark"></span>
+                            Erledigt
+                        </label>
+                    </div>
+                    <div class="task-content">
+                        <div class="task-icon" id="my-task-icon">🧹</div>
+                        <div class="task-details">
+                            <h4 id="my-task-title">Lade...</h4>
+                            <p id="my-task-desc"></p>
                         </div>
                     </div>
-
-                    <h3 class="section-title">Alle Aufgaben</h3>
-                    <div class="all-tasks-grid" id="all-tasks-grid"></div>
                 </div>
 
-                <div id="putzplan-calendar-view" style="display: none;">
-                    <div class="calendar-grid-header">
-                        <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
-                    </div>
-                    <div id="calendar-grid" class="calendar-grid"></div>
-                </div>
+                <h3 class="section-title">Alle Aufgaben</h3>
+                <div class="all-tasks-grid" id="all-tasks-grid"></div>
             </main>
         </div>
 
@@ -167,6 +158,23 @@
 
                 <h3 class="section-title" style="margin-top: 2rem;">Letzte Ausgaben</h3>
                 <div id="finance-expenses-list" class="finance-list"></div>
+            </main>
+        </div>
+
+        <!-- Admin View -->
+        <div id="admin-view" class="view">
+            <nav class="navbar glass-nav">
+                <button id="admin-back-btn" class="btn-icon">◀</button>
+                <span class="navbar-title">Admin Bereich</span>
+                <div class="navbar-right">
+                    <button id="admin-logout-btn" class="btn-icon">🚪</button>
+                </div>
+            </nav>
+            <main class="page">
+                <div class="glass-card" style="padding: 2rem;">
+                    <h2 class="section-title">WG Verwaltung</h2>
+                    <p class="subtitle">Hier kommen bald Admin-Funktionen hin.</p>
+                </div>
             </main>
         </div>
 
@@ -223,7 +231,7 @@
     </div>
 
     <script src="data.js"></script>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=13"></script>
 </body>
 
 </html>
