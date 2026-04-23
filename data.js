@@ -6,31 +6,31 @@ const WG_DATA = {
             id: "k1",
             title: "Küche (Team 1)",
             description: "Arbeitsflächen abwischen, Herd & Spüle reinigen, Müll rausbringen, Boden saugen & wischen. Team-Abstimmung: Wer macht was?",
-            icon: "🍳"
+            icon: ""
         },
         {
             id: "k2",
             title: "Küche (Team 2)",
             description: "Arbeitsflächen abwischen, Herd & Spüle reinigen, Müll rausbringen, Boden saugen & wischen. Team-Abstimmung: Wer macht was?",
-            icon: "🗑️"
+            icon: ""
         },
         {
             id: "gb",
             title: "Großes Bad",
             description: "Dusche/Badewanne schrubben, Waschbecken & Spiegel reinigen, Toilette gründlich putzen, Boden wischen.",
-            icon: "🛁"
+            icon: ""
         },
         {
             id: "kb",
             title: "Kleines Bad & Flur",
             description: "Gäste-WC reinigen (Waschbecken, Spiegel, Toilette). Gesamten Flur saugen und bei Bedarf wischen.",
-            icon: "🧹"
+            icon: ""
         },
         {
             id: "p",
             title: "Pause (Frei)",
             description: "Keine festen Putzaufgaben. Ggf. Vorräte (Klopapier, Spüli, Tabs) prüfen und Bescheid geben, wenn etwas fehlt.",
-            icon: "🛋️"
+            icon: ""
         }
     ]
 };

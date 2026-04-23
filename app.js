@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE = '';
+    const API_BASE = 'http://192.168.178.120:3000';
+    console.log("App started, API_BASE set to:", API_BASE);
 
     // State
     let currentUser = localStorage.getItem('wg_user');
@@ -237,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) {}
         const myAsgn = currentWeekData.assignments.find(a => a.assignee === currentUser);
         if (myAsgn) {
-            myTaskIcon.textContent = myAsgn.role.icon;
+            
             myTaskTitle.textContent = myAsgn.role.title;
             myTaskDesc.textContent = myAsgn.role.description;
             taskDoneCheckbox.checked = !!statuses[currentUser];
@@ -252,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isDone = !!statuses[asgn.assignee];
             const card = document.createElement('div');
             card.className = `glass-card task-card ${isMe ? 'is-me' : ''} ${isDone ? 'is-done' : ''}`;
-            card.innerHTML = `<div class="task-card-header"><span class="task-card-icon">${asgn.role.icon}</span><span class="task-card-title">${asgn.role.title}</span></div><div style="margin-top:10px;font-size:0.9em;">${isDone ? '<span style="color:var(--success)">✅ Erledigt</span>' : '<span style="color:var(--text-muted)">⏳ Offen</span>'}</div><div class="task-card-assignee">${isMe ? 'Du' : asgn.assignee}</div>`;
+            card.innerHTML = `<div class="task-card-header"><span class="task-card-title">${asgn.role.title}</span></div><div style="margin-top:10px;font-size:0.9em;">${isDone ? '<span style="color:var(--success)">Erledigt</span>' : '<span style="color:var(--text-muted)">Offen</span>'}</div><div class="task-card-assignee">${isMe ? 'Du' : asgn.assignee}</div>`;
             allTasksGrid.appendChild(card);
         });
     }
@@ -275,7 +276,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE}/api/shopping`);
             const result = await res.json();
             if (result.success) renderShoppingList(result.data);
-        } catch (err) {}
+        } catch (err) {
+            console.error("Fehler beim Laden der Einkaufsliste:", err);
+            alert("Fehler: Einkaufsliste konnte nicht geladen werden. Ist der Server auf Port 3000 aktiv?");
+        }
     }
     function renderShoppingList(items) {
         shoppingList.innerHTML = '';
@@ -283,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
         items.forEach(item => {
             const div = document.createElement('div');
             div.className = 'shopping-item glass-card';
-            div.innerHTML = `<span>${esc(item.text)}</span><button class="btn-icon">✅</button>`;
+            div.innerHTML = `<span>${esc(item.text)}</span><button class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="20 6 9 17 4 12"/></svg></button>`;
             div.querySelector('button').addEventListener('click', () => deleteShoppingItem(item.id));
             shoppingList.appendChild(div);
         });
@@ -324,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const date = new Date(exp.date).toLocaleDateString('de-DE');
             let actionsHtml = '';
             if (exp.addedBy === currentUser) {
-                actionsHtml = `<div class="item-actions"><button class="btn-text btn-sm edit-btn" data-id="${exp.id}">✏️ Edit</button><button class="btn-text btn-sm delete-btn" data-id="${exp.id}" style="color:var(--danger);">🗑️ Löschen</button></div>`;
+                actionsHtml = `<div class="item-actions"><button class="btn-text btn-sm edit-btn" data-id="${exp.id}">Bearbeiten</button><button class="btn-text btn-sm delete-btn" data-id="${exp.id}" style="color:var(--danger);">Löschen</button></div>`;
             }
             div.innerHTML = `<div class="item-main"><div><div class="item-title">${esc(exp.description)}</div><div class="item-subtitle">${date} • Bezahlt von ${exp.paidBy}</div></div><div class="item-amount">${exp.amount.toFixed(2)} €</div></div>${actionsHtml}`;
             const delBtn = div.querySelector('.delete-btn');
@@ -355,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isCreditor) {
                         const paypal = publicUsers[other]?.paypal;
                         const paypalLink = paypal ? `https://paypal.me/${paypal.replace(/^(https?:\/\/)?(www\.)?paypal\.me\//i, '')}/${amount.toFixed(2)}` : null;
-                        settleBtn = `<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm settle-btn">Begleichen</button>${paypalLink ? `<a href="${paypalLink}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none;">PayPal</a>` : ''}</div>`;
+                        settleBtn = `<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm settle-btn">Begleichen</button>${paypalLink ? `<a href="${paypalLink}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none; display:flex; align-items:center; justify-content:center; padding:0 0.8rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/></svg></a>` : ''}</div>`;
                     }
                     row.innerHTML = `<div class="item-main"><div class="item-title">${text}</div><div class="item-amount">${amount.toFixed(2)} €</div></div>${settleBtn}`;
                     const btn = row.querySelector('.settle-btn');

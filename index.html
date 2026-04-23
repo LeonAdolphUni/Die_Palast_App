@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Die Palast App</title>
     <meta name="description" content="Die Palast App – Putzplan & Einkaufsliste">
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=32">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -38,7 +38,7 @@
                 <span class="navbar-title">Die Palast App</span>
                 <div class="navbar-right">
                     <span id="menu-user-name" class="navbar-user"></span>
-                    <button id="menu-logout-btn" class="btn-icon">🚪</button>
+                    <button id="menu-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
                 </div>
             </nav>
             <main class="page">
@@ -47,27 +47,27 @@
                 </div>
                 <div class="menu-grid">
                     <button class="menu-card glass-card" id="menu-putzplan-btn">
-                        <div class="menu-card-dot" style="background: var(--primary);"></div>
+                        
                         <h2 class="menu-card-title">Putzplan</h2>
                         <p class="menu-card-desc">Check deine Aufgaben für diese Woche.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-shopping-btn">
-                        <div class="menu-card-dot" style="background: var(--success);"></div>
+                        
                         <h2 class="menu-card-title">Einkauf</h2>
                         <p class="menu-card-desc">Was fehlt noch im Kühlschrank?</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-finance-btn">
-                        <div class="menu-card-dot" style="background: var(--warning);"></div>
+                        
                         <h2 class="menu-card-title">Finanzen</h2>
                         <p class="menu-card-desc">Ausgaben fair in der WG teilen.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-profile-btn">
-                        <div class="menu-card-dot" style="background: #bf5af2;"></div>
+                        
                         <h2 class="menu-card-title">Profil</h2>
                         <p class="menu-card-desc">PayPal & Einstellungen verwalten.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-admin-btn" style="display: none;">
-                        <div class="menu-card-dot" style="background: #8e8e93;"></div>
+                        
                         <h2 class="menu-card-title">Admin</h2>
                         <p class="menu-card-desc">WG-Einstellungen.</p>
                     </button>
@@ -78,20 +78,20 @@
         <!-- Putzplan View -->
         <div id="putzplan-view" class="view">
             <nav class="navbar glass-nav">
-                <button id="putzplan-back-btn" class="btn-icon">◀</button>
+                <button id="putzplan-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
                 <span class="navbar-title">Putzplan</span>
                 <div class="navbar-right">
-                    <button id="putzplan-logout-btn" class="btn-icon">🚪</button>
+                    <button id="putzplan-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
                 </div>
             </nav>
             <main class="page">
                 <header class="week-header">
-                    <button id="prev-week-btn" class="btn-icon">◀</button>
+                    <button id="prev-week-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
                     <div class="week-info">
                         <h2 id="current-week-title">Diese Woche</h2>
                         <p id="current-week-date" class="subtitle"></p>
                     </div>
-                    <button id="next-week-btn" class="btn-icon">▶</button>
+                    <button id="next-week-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="9 18 15 12 9 6"/></svg></button>
                 </header>
 
                 <div class="my-task glass-card highlight-card">
@@ -104,7 +104,7 @@
                         </label>
                     </div>
                     <div class="task-content">
-                        <div class="task-icon" id="my-task-icon">🧹</div>
+                        
                         <div class="task-details">
                             <h4 id="my-task-title">Lade...</h4>
                             <p id="my-task-desc"></p>
@@ -120,10 +120,10 @@
         <!-- Shopping View -->
         <div id="shopping-view" class="view">
             <nav class="navbar glass-nav">
-                <button id="shopping-back-btn" class="btn-icon">◀</button>
+                <button id="shopping-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
                 <span class="navbar-title">Einkauf</span>
                 <div class="navbar-right">
-                    <button id="shopping-logout-btn" class="btn-icon">🚪</button>
+                    <button id="shopping-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
                 </div>
             </nav>
             <main class="page">
@@ -139,10 +139,10 @@
         <!-- Finance View -->
         <div id="finance-view" class="view">
             <nav class="navbar glass-nav">
-                <button id="finance-back-btn" class="btn-icon">◀</button>
+                <button id="finance-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
                 <span class="navbar-title">Finanzen</span>
                 <div class="navbar-right">
-                    <button id="finance-logout-btn" class="btn-icon">🚪</button>
+                    <button id="finance-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
                 </div>
             </nav>
             <main class="page">
@@ -164,10 +164,10 @@
         <!-- Admin View -->
         <div id="admin-view" class="view">
             <nav class="navbar glass-nav">
-                <button id="admin-back-btn" class="btn-icon">◀</button>
+                <button id="admin-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
                 <span class="navbar-title">Admin Bereich</span>
                 <div class="navbar-right">
-                    <button id="admin-logout-btn" class="btn-icon">🚪</button>
+                    <button id="admin-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
                 </div>
             </nav>
             <main class="page">

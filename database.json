@@ -5,7 +5,8 @@
       "paypal": "https://paypal.me/Leon310803"
     },
     "Andi": {
-      "password": "123"
+      "password": "123",
+      "paypal": "paypal.me/AndreasLenweber"
     },
     "Felix": {
       "password": "123"
@@ -21,8 +22,17 @@
       "paypal": ""
     }
   },
-  "tasksCompleted": {},
-  "shoppingList": [],
+  "tasksCompleted": {
+    "2026-W00": {
+      "Andi": true
+    }
+  },
+  "shoppingList": [
+    {
+      "id": "1776899751899",
+      "text": "test"
+    }
+  ],
   "expenses": [
     {
       "id": "1776889719387",
