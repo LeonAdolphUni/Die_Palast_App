@@ -24,15 +24,14 @@
   },
   "tasksCompleted": {
     "2026-W00": {
-      "Andi": true
+      "Andi": true,
+      "Leon": true
+    },
+    "2026-W-1": {
+      "Leon": true
     }
   },
-  "shoppingList": [
-    {
-      "id": "1776899751899",
-      "text": "test"
-    }
-  ],
+  "shoppingList": [],
   "expenses": [
     {
       "id": "1776889719387",

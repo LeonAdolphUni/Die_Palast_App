@@ -48,14 +48,36 @@ Eine hochwertige, minimalistische Webanwendung zur Verwaltung des WG-Lebens. Ins
    ```bash
    npm start
    ```
-   Die App läuft standardmäßig auf `http://localhost:3000`.
+   Die App läuft standardmäßig auf `http://derpalast.net:3000`.
 
 ## 🌐 Deployment (Linux Server)
 
-Falls du die App auf einem eigenen Server (z.B. Raspberry Pi oder VPS) hostest, kannst du sie einfach per SCP übertragen:
+Falls du die App auf einem eigenen Server hostest, schiebe alle Dateien in den Web-Ordner:
 
 ```bash
-scp app.js index.html style.css leon@DEINE_IP:/var/www/meine_webseite/
+scp index.html app.js style.css server.js package.json database.json data.js leon@derpalast.net:/var/www/derpalast/webserver/
+```
+
+### Nginx Reverse Proxy (Empfohlen)
+Um die App über Port 80/443 (HTTP/HTTPS) ohne `:3000` zu betreiben, nutze diese Nginx-Config:
+
+```nginx
+server {
+    listen 80;
+    server_name derpalast.net;
+
+    location / {
+        root /var/www/derpalast/webserver;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
 ## 📝 Lizenz

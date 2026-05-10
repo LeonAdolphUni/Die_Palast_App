@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Die Palast App</title>
     <meta name="description" content="Die Palast App – Putzplan & Einkaufsliste">
-    <link rel="stylesheet" href="style.css?v=32">
+    <link rel="stylesheet" href="style.css?v=33">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -43,33 +43,22 @@
             </nav>
             <main class="page">
                 <div class="page-header">
-                    <h1 class="page-hero-title">Was geht, Yalla?</h1>
                 </div>
                 <div class="menu-grid">
                     <button class="menu-card glass-card" id="menu-putzplan-btn">
-                        
                         <h2 class="menu-card-title">Putzplan</h2>
-                        <p class="menu-card-desc">Check deine Aufgaben für diese Woche.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-shopping-btn">
-                        
                         <h2 class="menu-card-title">Einkauf</h2>
-                        <p class="menu-card-desc">Was fehlt noch im Kühlschrank?</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-finance-btn">
-                        
                         <h2 class="menu-card-title">Finanzen</h2>
-                        <p class="menu-card-desc">Ausgaben fair in der WG teilen.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-profile-btn">
-                        
                         <h2 class="menu-card-title">Profil</h2>
-                        <p class="menu-card-desc">PayPal & Einstellungen verwalten.</p>
                     </button>
                     <button class="menu-card glass-card" id="menu-admin-btn" style="display: none;">
-                        
                         <h2 class="menu-card-title">Admin</h2>
-                        <p class="menu-card-desc">WG-Einstellungen.</p>
                     </button>
                 </div>
             </main>
@@ -172,8 +161,9 @@
             </nav>
             <main class="page">
                 <div class="glass-card" style="padding: 2rem;">
-                    <h2 class="section-title">WG Verwaltung</h2>
-                    <p class="subtitle">Hier kommen bald Admin-Funktionen hin.</p>
+                    <h2 class="section-title">Bewohner verwalten</h2>
+                    <p class="subtitle">Passwörter deiner Mitbewohner ändern.</p>
+                    <div id="admin-user-list" class="finance-list" style="margin-top: 1.5rem;"></div>
                 </div>
             </main>
         </div>
@@ -219,10 +209,38 @@
                     <button class="modal-close" id="profile-close-btn">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 2rem;">
+                        <div id="profile-pic-container" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: var(--border); margin-bottom: 1rem; border: 1px solid var(--border);">
+                            <img id="profile-pic-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                            <div id="profile-pic-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 2rem;">👤</div>
+                        </div>
+                        <input type="file" id="profile-pic-input" style="display: none;" accept="image/*">
+                        <button class="btn-text btn-sm" onclick="document.getElementById('profile-pic-input').click()">Bild ändern</button>
+                    </div>
+
+                    <label class="input-label">Telefonnummer</label>
+                    <input type="text" id="profile-phone-input" class="input" placeholder="z.B. +49 176 ...">
+
                     <label class="input-label">PayPal.me Name</label>
                     <input type="text" id="profile-paypal-input" class="input" placeholder="dein_name">
-                    <button id="profile-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Speichern</button>
+
+                    <button id="profile-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Profil speichern</button>
                     <p id="profile-feedback" class="feedback-text"></p>
+                </div>
+            </div>
+
+            <!-- Admin Password Modal -->
+            <div id="admin-password-modal" class="modal glass-card">
+                <div class="modal-header">
+                    <h3 id="admin-password-title">Passwort ändern</h3>
+                    <button class="modal-close" id="admin-password-close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="admin-target-user">
+                    <label class="input-label">Neues Passwort für <span id="admin-target-name"></span></label>
+                    <input type="text" id="admin-new-password" class="input" placeholder="Passwort eingeben">
+                    <button id="admin-password-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Passwort speichern</button>
+                    <p id="admin-password-feedback" class="feedback-text"></p>
                 </div>
             </div>
 
@@ -230,8 +248,12 @@
 
     </div>
 
+    <footer class="creator-credits">
+        Erstellt von Andi & Leon
+    </footer>
+
     <script src="data.js"></script>
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=33"></script>
 </body>
 
 </html>

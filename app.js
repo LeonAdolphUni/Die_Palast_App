@@ -1,9 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE = 'http://192.168.178.120:3000';
+    const API_BASE = window.location.origin;
     console.log("App started, API_BASE set to:", API_BASE);
 
     // State
     let currentUser = localStorage.getItem('wg_user');
+    let authToken = localStorage.getItem('wg_token');
+    let lastActivity = Date.now();
     let currentWeekOffset = 0;
     let selectedUserForLogin = null;
     let currentWeekData = null;
@@ -66,6 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Admin
     const adminBackBtn = document.getElementById('admin-back-btn');
     const adminLogoutBtn = document.getElementById('admin-logout-btn');
+    const adminUserList = document.getElementById('admin-user-list');
+    const adminPasswordModal = document.getElementById('admin-password-modal');
+    const adminPasswordCloseBtn = document.getElementById('admin-password-close-btn');
 
     // Modals
     const modalOverlay = document.getElementById('modal-overlay');
@@ -80,19 +85,42 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         renderLogin();
         if (currentUser) {
-            fetchPublicUsers().then(() => showMenu());
+            fetchPublicUsers().then(() => showMenu()).catch(() => {
+                alert("Server auf Port 3000 nicht erreichbar!");
+            });
         } else {
             showLogin();
         }
         setupEventListeners();
     }
 
+    async function apiFetch(url, options = {}) {
+        options.headers = options.headers || {};
+        if (authToken) {
+            options.headers['Authorization'] = authToken;
+        }
+        
+        const res = await fetch(url, options);
+        
+        if (res.status === 401) {
+            console.warn("Sitzung abgelaufen oder ungültig.");
+            logout();
+            throw new Error("Sitzung abgelaufen");
+        }
+        
+        return res;
+    }
+
     async function fetchPublicUsers() {
         try {
-            const res = await fetch(`${API_BASE}/api/users/public`);
+            const res = await apiFetch(`${API_BASE}/api/users/public`);
+            if (!res.ok) throw new Error();
             const result = await res.json();
             if (result.success) publicUsers = result.data;
-        } catch (err) {}
+        } catch (err) {
+            console.error("Fetch error:", err);
+            throw err;
+        }
     }
 
     function setupEventListeners() {
@@ -137,14 +165,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         document.getElementById('expense-save-btn').addEventListener('click', saveExpense);
         document.getElementById('profile-save-btn').addEventListener('click', saveProfile);
+        document.getElementById('profile-pic-input').addEventListener('change', handleProfilePicChange);
+
+        adminPasswordCloseBtn.addEventListener('click', closeModal);
+        document.getElementById('admin-password-save-btn').addEventListener('click', saveAdminPassword);
+
+        // Security: Aktivität tracken
+        ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+            window.addEventListener(evt, () => { lastActivity = Date.now(); });
+        });
+        
+        setInterval(checkSecurityTimeout, 30000); // Alle 30 Sek prüfen
+    }
+
+    function checkSecurityTimeout() {
+        if (!currentUser) return;
+        
+        const now = Date.now();
+        const thirtyMinutes = 30 * 60 * 1000;
+        
+        if (now - lastActivity > thirtyMinutes) {
+            console.log("Logout wegen Inaktivität");
+            logout();
+            alert("Du wurdest wegen Inaktivität ausgeloggt.");
+        }
     }
 
     // --- Auth Logic ---
-    function logout() { localStorage.removeItem('wg_user'); currentUser = null; showLogin(); }
+    function logout() { 
+        localStorage.removeItem('wg_user'); 
+        localStorage.removeItem('wg_token');
+        currentUser = null; 
+        authToken = null;
+        showLogin(); 
+    }
     async function attemptLogin() {
         const password = passwordInput.value;
         if (!password || !selectedUserForLogin) return;
         try {
+            console.log("Attempting login for:", selectedUserForLogin);
             const res = await fetch(`${API_BASE}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -153,7 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await res.json();
             if (result.success) {
                 currentUser = selectedUserForLogin;
+                authToken = result.token;
                 localStorage.setItem('wg_user', currentUser);
+                localStorage.setItem('wg_token', authToken);
+                lastActivity = Date.now();
                 passwordInput.value = '';
                 loginError.style.display = 'none';
                 fetchPublicUsers().then(() => showMenu());
@@ -161,10 +223,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 loginError.textContent = result.message || 'Falsches Passwort';
                 loginError.style.display = 'block';
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error("Login Error:", err);
+            alert("Login fehlgeschlagen. Ist der Server auf Port 3000 aktiv? (CORS/Netzwerkfehler)");
+        }
     }
     function renderLogin() {
         userGrid.innerHTML = '';
+        if (!WG_DATA || !WG_DATA.flatmates) return;
         WG_DATA.flatmates.concat(["Admin"]).forEach(name => {
             const btn = document.createElement('button');
             btn.className = 'user-btn glass-card';
@@ -186,23 +252,77 @@ document.addEventListener('DOMContentLoaded', () => {
         hideAllViews(); 
         menuView.classList.add('active'); 
         menuUserName.textContent = currentUser; 
-        menuAdminBtn.style.display = (currentUser === 'Admin') ? 'flex' : 'none';
+        
+        const isAdmin = (currentUser === 'Admin');
+        
+        // Admin sieht NUR den Admin-Button, andere sehen ALLES AUẞER den Admin-Button
+        menuAdminBtn.style.display = isAdmin ? 'flex' : 'none';
+        menuPutzplanBtn.style.display = isAdmin ? 'none' : 'flex';
+        menuShoppingBtn.style.display = isAdmin ? 'none' : 'flex';
+        menuFinanceBtn.style.display = isAdmin ? 'none' : 'flex';
+        menuProfileBtn.style.display = isAdmin ? 'none' : 'flex';
     }
     function showLogin() { hideAllViews(); loginView.classList.add('active'); userGrid.style.display = 'grid'; passwordSection.style.display = 'none'; }
     function showPutzplan() { hideAllViews(); putzplanView.classList.add('active'); currentWeekOffset = 0; updatePutzplan(); }
     function showShopping() { hideAllViews(); shoppingView.classList.add('active'); loadShoppingList(); }
     function showFinance() { hideAllViews(); financeView.classList.add('active'); loadFinances(); }
-    function showAdmin() { hideAllViews(); adminView.classList.add('active'); }
+    function showAdmin() { 
+        hideAllViews(); 
+        adminView.classList.add('active'); 
+        renderAdminUserList();
+    }
+
+    function renderAdminUserList() {
+        adminUserList.innerHTML = '';
+        WG_DATA.flatmates.forEach(name => {
+            const div = document.createElement('div');
+            div.className = 'finance-item glass-card';
+            div.innerHTML = `<div class="item-main"><div><div class="item-title">${name}</div><div class="item-subtitle">Bewohner</div></div><button class="btn-text btn-sm change-pw-btn" data-user="${name}">PW ändern</button></div>`;
+            div.querySelector('.change-pw-btn').addEventListener('click', () => openAdminPasswordModal(name));
+            adminUserList.appendChild(div);
+        });
+    }
+
+    function openAdminPasswordModal(name) {
+        document.getElementById('admin-target-user').value = name;
+        document.getElementById('admin-target-name').textContent = name;
+        document.getElementById('admin-new-password').value = '';
+        document.getElementById('admin-password-feedback').textContent = '';
+        openModal(adminPasswordModal);
+    }
+
+    async function saveAdminPassword() {
+        const username = document.getElementById('admin-target-user').value;
+        const newPassword = document.getElementById('admin-new-password').value.trim();
+        if (!newPassword) return alert('Bitte Passwort eingeben.');
+        try {
+            const res = await apiFetch(`${API_BASE}/api/users/${username}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newPassword })
+            });
+            const result = await res.json();
+            if (result.success) {
+                document.getElementById('admin-password-feedback').textContent = 'Passwort geändert!';
+                setTimeout(closeModal, 1500);
+            }
+        } catch (err) { alert('Fehler beim Speichern.'); }
+    }
 
     // --- Putzplan Logic ---
     function getWeekData(offsetOffset) {
         const startDate = new Date(WG_DATA.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        
         const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        // Finde den Montag der aktuellen Woche
+        const day = now.getDay(); // 0 = So, 1 = Mo...
+        const diffToMonday = (day === 0 ? -6 : 1) - day;
         const currentMonday = new Date(now);
-        const day = currentMonday.getDay();
-        const diff = currentMonday.getDate() - day + (day === 0 ? -6 : 1);
-        currentMonday.setDate(diff);
-        currentMonday.setHours(0, 0, 0, 0);
+        currentMonday.setDate(now.getDate() + diffToMonday);
+        
         let msPassed = currentMonday.getTime() - startDate.getTime();
         let weeksPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24 * 7));
         let targetWeekIndex = weeksPassed + offsetOffset;
@@ -219,9 +339,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pIdx < 0) pIdx += WG_DATA.flatmates.length;
             return { role, assignee: WG_DATA.flatmates[pIdx] };
         });
-        let title = "Diese Woche";
-        if (offsetOffset === -1) title = "Letzte Woche";
-        else if (offsetOffset === 1) title = "Nächste Woche";
+        let title = "Aktuelle Woche";
+        if (offsetOffset === -1) title = "Vergangene Woche";
+        else if (offsetOffset === 1) title = "Kommende Woche";
         else if (offsetOffset !== 0) title = `Woche ${targetWeekIndex + 1}`;
         return { title, dateString: `${fmt(targetMonday)} - ${fmt(targetSunday)}`, weekKey: `${targetMonday.getFullYear()}-W${String(targetWeekIndex).padStart(2, '0')}`, assignments };
     }
@@ -232,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         weekDate.textContent = currentWeekData.dateString;
         let statuses = {};
         try {
-            const res = await fetch(`${API_BASE}/api/tasks/${currentWeekData.weekKey}`);
+            const res = await apiFetch(`${API_BASE}/api/tasks/${currentWeekData.weekKey}`);
             const result = await res.json();
             if (result.success) statuses = result.data;
         } catch (err) {}
@@ -261,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleTaskToggle(e) {
         const isCompleted = e.target.checked;
         try {
-            await fetch(`${API_BASE}/api/tasks/${currentWeekData.weekKey}`, {
+            await apiFetch(`${API_BASE}/api/tasks/${currentWeekData.weekKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username: currentUser, completed: isCompleted })
@@ -273,12 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Shopping Logic ---
     async function loadShoppingList() {
         try {
-            const res = await fetch(`${API_BASE}/api/shopping`);
+            const res = await apiFetch(`${API_BASE}/api/shopping`);
             const result = await res.json();
             if (result.success) renderShoppingList(result.data);
         } catch (err) {
-            console.error("Fehler beim Laden der Einkaufsliste:", err);
-            alert("Fehler: Einkaufsliste konnte nicht geladen werden. Ist der Server auf Port 3000 aktiv?");
+            console.error("Shopping Error:", err);
         }
     }
     function renderShoppingList(items) {
@@ -296,16 +415,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = shoppingInput.value.trim();
         if (!text) return;
         try {
-            await fetch(`${API_BASE}/api/shopping`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
+            await apiFetch(`${API_BASE}/api/shopping`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
             shoppingInput.value = ''; loadShoppingList();
         } catch (err) {}
     }
-    async function deleteShoppingItem(id) { try { await fetch(`${API_BASE}/api/shopping/${id}`, { method: 'DELETE' }); loadShoppingList(); } catch (err) {} }
+    async function deleteShoppingItem(id) { try { await apiFetch(`${API_BASE}/api/shopping/${id}`, { method: 'DELETE' }); loadShoppingList(); } catch (err) {} }
 
     // --- Finance Logic ---
     async function loadFinances() {
         try {
-            const res = await fetch(`${API_BASE}/api/expenses`);
+            const res = await apiFetch(`${API_BASE}/api/expenses`);
             const result = await res.json();
             if (result.success) renderFinances(result.data);
         } catch (err) {}
@@ -327,8 +446,13 @@ document.addEventListener('DOMContentLoaded', () => {
             div.className = 'finance-item glass-card';
             const date = new Date(exp.date).toLocaleDateString('de-DE');
             let actionsHtml = '';
-            if (exp.addedBy === currentUser) {
-                actionsHtml = `<div class="item-actions"><button class="btn-text btn-sm edit-btn" data-id="${exp.id}">Bearbeiten</button><button class="btn-text btn-sm delete-btn" data-id="${exp.id}" style="color:var(--danger);">Löschen</button></div>`;
+            // Admin darf ALLES löschen, Bewohner eigene ODER wenn sie der Zahler waren (Fallback für alte Daten)
+            const isOwner = (exp.addedBy === currentUser) || (!exp.addedBy && exp.paidBy === currentUser);
+            if (isOwner || currentUser === 'Admin') {
+                actionsHtml = `<div class="item-actions" style="width:100%; display:flex; gap:10px; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
+                    <button class="btn-text btn-sm edit-btn" data-id="${exp.id}" style="color:var(--accent);">Bearbeiten</button>
+                    <button class="btn-text btn-sm delete-btn" data-id="${exp.id}" style="color:var(--error);">Löschen</button>
+                </div>`;
             }
             div.innerHTML = `<div class="item-main"><div><div class="item-title">${esc(exp.description)}</div><div class="item-subtitle">${date} • Bezahlt von ${exp.paidBy}</div></div><div class="item-amount">${exp.amount.toFixed(2)} €</div></div>${actionsHtml}`;
             const delBtn = div.querySelector('.delete-btn');
@@ -359,7 +483,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!isCreditor) {
                         const paypal = publicUsers[other]?.paypal;
                         const paypalLink = paypal ? `https://paypal.me/${paypal.replace(/^(https?:\/\/)?(www\.)?paypal\.me\//i, '')}/${amount.toFixed(2)}` : null;
-                        settleBtn = `<div style="margin-top:10px;display:flex;gap:10px;"><button class="btn btn-primary btn-sm settle-btn">Begleichen</button>${paypalLink ? `<a href="${paypalLink}" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none; display:flex; align-items:center; justify-content:center; padding:0 0.8rem;"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/></svg></a>` : ''}</div>`;
+                        settleBtn = `<div style="margin-top:10px;display:flex;gap:10px;width:100%;">
+                            <button class="btn btn-primary btn-sm settle-btn" style="flex:1;">Als bezahlt markieren</button>
+                            ${paypalLink ? `<a href="${paypalLink}" target="_blank" class="btn-paypal" style="flex:1;">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/></svg>
+                                PayPal
+                            </a>` : ''}
+                        </div>`;
                     }
                     row.innerHTML = `<div class="item-main"><div class="item-title">${text}</div><div class="item-amount">${amount.toFixed(2)} €</div></div>${settleBtn}`;
                     const btn = row.querySelector('.settle-btn');
@@ -373,14 +503,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function settleDebt(to, from, amount) {
         if (!confirm(`${amount.toFixed(2)} € an ${to} als bezahlt markieren?`)) return;
         try {
-            await fetch(`${API_BASE}/api/expenses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: `Schuldenbegleichung an ${to}`, amount: amount, paidBy: from, splits: { [to]: amount }, addedBy: currentUser }) });
+            await apiFetch(`${API_BASE}/api/expenses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: `Schuldenbegleichung an ${to}`, amount: amount, paidBy: from, splits: { [to]: amount }, addedBy: currentUser }) });
             loadFinances();
         } catch (err) {}
     }
     async function deleteExpense(id) {
         if (!confirm('Diese Ausgabe wirklich löschen?')) return;
         try {
-            await fetch(`${API_BASE}/api/expenses/${id}`, { method: 'DELETE' });
+            await apiFetch(`${API_BASE}/api/expenses/${id}`, { method: 'DELETE' });
             loadFinances();
         } catch (err) {}
     }
@@ -410,6 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const type = document.getElementById('expense-split-type').value;
         const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
         container.innerHTML = '';
+        if (!WG_DATA || !WG_DATA.flatmates) return;
         WG_DATA.flatmates.forEach(name => {
             const div = document.createElement('div'); div.className = 'split-row';
             if (type === 'equal') { const share = (amount / WG_DATA.flatmates.length).toFixed(2); div.innerHTML = `<span>${name}</span><span>${share} €</span>`; }
@@ -433,21 +564,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const method = id ? 'PUT' : 'POST'; const url = id ? `${API_BASE}/api/expenses/${id}` : `${API_BASE}/api/expenses`;
         try {
-            const res = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: desc, amount, paidBy: payer, splits, addedBy: currentUser }) });
+            const res = await apiFetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description: desc, amount, paidBy: payer, splits, addedBy: currentUser }) });
             const result = await res.json(); if (result.success) { closeModal(); loadFinances(); }
         } catch (err) { alert('Fehler beim Speichern.'); }
     }
 
     // --- Profile Logic ---
     function showProfile() {
-        document.getElementById('profile-paypal-input').value = publicUsers[currentUser]?.paypal || '';
-        document.getElementById('profile-feedback').textContent = ''; openModal(profileModal);
+        const user = publicUsers[currentUser] || {};
+        document.getElementById('profile-paypal-input').value = user.paypal || '';
+        document.getElementById('profile-phone-input').value = user.phone || '';
+        
+        const preview = document.getElementById('profile-pic-preview');
+        const placeholder = document.getElementById('profile-pic-placeholder');
+        if (user.profilePic) {
+            preview.src = user.profilePic;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+        } else {
+            preview.style.display = 'none';
+            placeholder.style.display = 'flex';
+        }
+        
+        document.getElementById('profile-feedback').textContent = ''; 
+        openModal(profileModal);
     }
+
+    function handleProfilePicChange(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const preview = document.getElementById('profile-pic-preview');
+            const placeholder = document.getElementById('profile-pic-placeholder');
+            preview.src = event.target.result;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    }
+
     async function saveProfile() {
         const paypal = document.getElementById('profile-paypal-input').value.trim();
+        const phone = document.getElementById('profile-phone-input').value.trim();
+        const profilePic = document.getElementById('profile-pic-preview').style.display === 'block' 
+            ? document.getElementById('profile-pic-preview').src 
+            : '';
+
         try {
-            const res = await fetch(`${API_BASE}/api/users/${currentUser}/paypal`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paypal }) });
-            const result = await res.json(); if (result.success) { document.getElementById('profile-feedback').textContent = 'Gespeichert!'; fetchPublicUsers(); setTimeout(closeModal, 1000); }
+            const res = await apiFetch(`${API_BASE}/api/users/${currentUser}/profile`, { 
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ paypal, phone, profilePic }) 
+            });
+            const result = await res.json(); 
+            if (result.success) { 
+                document.getElementById('profile-feedback').textContent = 'Profil gespeichert!'; 
+                fetchPublicUsers(); 
+                setTimeout(closeModal, 1000); 
+            }
         } catch (err) {}
     }
 
