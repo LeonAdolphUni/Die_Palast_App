@@ -7,89 +7,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = window.location.origin;
     const ADMIN = 'Admin';
     const MIN_PASSWORD_LENGTH = 8;
+    const AVATAR_COLORS = 8;
 
     // State
     let currentUser = null;
     let authToken = localStorage.getItem('wg_token');
     let lastActivity = Date.now();
     let currentWeekOffset = 0;
-    let selectedUserForLogin = null;
     let currentWeekData = null;
+    let selectedUserForLogin = null;
     let publicUsers = {};
+    let picTarget = 'profile';     // Wohin ein ausgewähltes Foto gehört: 'profile' oder 'welcome'
+    let welcomePic = '';
+    let expenses = [];
+    let selectedPayer = null;
+    let splitType = 'equal';
+    let menuTarget = null;
+
+    const $ = (id) => document.getElementById(id);
+    const money = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });
+    const signedMoney = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', signDisplay: 'exceptZero' });
+
+    const ICON_CHECK = '<svg class="status-done" viewBox="0 0 24 24" role="img" aria-label="Erledigt"><circle cx="12" cy="12" r="11" fill="var(--green)"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_OPEN = '<svg class="status-open" viewBox="0 0 24 24" role="img" aria-label="Offen"><circle cx="12" cy="12" r="10.5" fill="none" stroke="var(--ring)" stroke-width="1.6"/></svg>';
+    const ICON_BADGE = '<span class="avatar-badge" aria-label="erledigt"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>';
+    const ICON_TICK = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+    const ICON_MORE = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="12" r="0.6" fill="currentColor"/><circle cx="12" cy="12" r="0.6" fill="currentColor"/><circle cx="16" cy="12" r="0.6" fill="currentColor"/></svg>';
+    const ICON_EXTERNAL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
 
     // --- DOM Elements ---
 
-    // Views
-    const loginView = document.getElementById('login-view');
-    const setupView = document.getElementById('setup-view');
-    const menuView = document.getElementById('menu-view');
-    const putzplanView = document.getElementById('putzplan-view');
-    const shoppingView = document.getElementById('shopping-view');
-    const financeView = document.getElementById('finance-view');
-    const adminView = document.getElementById('admin-view');
+    const tabBar = $('tab-bar');
+    const modalOverlay = $('modal-overlay');
+    const contextMenu = $('context-menu');
 
     // Login
-    const userGrid = document.getElementById('user-grid');
-    const passwordSection = document.getElementById('password-section');
-    const passwordPrompt = document.getElementById('password-prompt');
-    const passwordInput = document.getElementById('password-input');
-    const loginSubmitBtn = document.getElementById('login-submit-btn');
-    const loginBackBtn = document.getElementById('login-back-btn');
-    const loginError = document.getElementById('login-error');
+    const userList = $('user-list');
+    const passwordInput = $('password-input');
+    const loginError = $('login-error');
 
     // Setup (erster Login / nach Reset)
-    const setupTitle = document.getElementById('setup-title');
-    const setupSubtitle = document.getElementById('setup-subtitle');
-    const setupPassword = document.getElementById('setup-password');
-    const setupPasswordRepeat = document.getElementById('setup-password-repeat');
-    const setupError = document.getElementById('setup-error');
-
-    // Menu
-    const menuUserName = document.getElementById('menu-user-name');
-    const menuLogoutBtn = document.getElementById('menu-logout-btn');
-    const menuPutzplanBtn = document.getElementById('menu-putzplan-btn');
-    const menuShoppingBtn = document.getElementById('menu-shopping-btn');
-    const menuFinanceBtn = document.getElementById('menu-finance-btn');
-    const menuProfileBtn = document.getElementById('menu-profile-btn');
-    const menuAdminBtn = document.getElementById('menu-admin-btn');
+    const setupPassword = $('setup-password');
+    const setupPasswordRepeat = $('setup-password-repeat');
+    const setupError = $('setup-error');
 
     // Putzplan
-    const putzplanBackBtn = document.getElementById('putzplan-back-btn');
-    const weekTitle = document.getElementById('current-week-title');
-    const weekDate = document.getElementById('current-week-date');
-    const prevWeekBtn = document.getElementById('prev-week-btn');
-    const nextWeekBtn = document.getElementById('next-week-btn');
-    const myTaskTitle = document.getElementById('my-task-title');
-    const myTaskDesc = document.getElementById('my-task-desc');
-    const allTasksGrid = document.getElementById('all-tasks-grid');
-    const taskDoneCheckbox = document.getElementById('task-done-checkbox');
+    const taskDoneCheckbox = $('task-done-checkbox');
 
-    // Shopping
-    const shoppingBackBtn = document.getElementById('shopping-back-btn');
-    const shoppingInput = document.getElementById('shopping-input');
-    const shoppingAddBtn = document.getElementById('shopping-add-btn');
-    const shoppingList = document.getElementById('shopping-list');
-    const shoppingEmpty = document.getElementById('shopping-empty');
-
-    // Finance
-    const financeBackBtn = document.getElementById('finance-back-btn');
-    const financeTotalBalance = document.getElementById('finance-total-balance');
-    const financeDebtsList = document.getElementById('finance-debts-list');
-    const financeExpensesList = document.getElementById('finance-expenses-list');
-    const financeAddBtn = document.getElementById('finance-add-btn');
-
-    // Admin
-    const adminBackBtn = document.getElementById('admin-back-btn');
-    const adminLogoutBtn = document.getElementById('admin-logout-btn');
-    const adminUserList = document.getElementById('admin-user-list');
-    const adminPasswordModal = document.getElementById('admin-password-modal');
-    const adminUserModal = document.getElementById('admin-user-modal');
-
-    // Modals
-    const modalOverlay = document.getElementById('modal-overlay');
-    const expenseModal = document.getElementById('expense-modal');
-    const profileModal = document.getElementById('profile-modal');
-    const passwordModal = document.getElementById('password-modal');
+    // Einkauf
+    const shoppingList = $('shopping-list');
+    const shoppingInput = $('shopping-input');
 
     // --- Init ---
     init();
@@ -111,14 +78,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Wer muss wohin nach dem Login? Startpasswort ändern -> Setup, sonst Menü (+ einmalig Profil einrichten)
+    // Wer muss wohin nach dem Login? Startpasswort ändern -> Setup, danach einmalig Profil einrichten
     async function routeAfterLogin(user) {
         currentUser = user.name;
         lastActivity = Date.now();
         if (user.mustChangePassword) return showSetup(user);
         await fetchPublicUsers();
-        showMenu();
-        if (!user.onboarded && !user.isAdmin) showProfile({ welcome: true });
+        if (user.isAdmin) return showAdmin();
+        if (!user.onboarded) return showWelcome();
+        showTab('home');
     }
 
     // fetch mit Token; bei abgelaufener Sitzung -> Login, bei offenem Startpasswort -> Setup
@@ -165,66 +133,89 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupEventListeners() {
-        loginSubmitBtn.addEventListener('click', attemptLogin);
-        passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') attemptLogin(); });
-        loginBackBtn.addEventListener('click', () => {
-            passwordSection.style.display = 'none';
-            userGrid.style.display = 'grid';
-            loginError.textContent = '';
-            selectedUserForLogin = null;
-        });
+        // Login
+        $('login-admin-btn').addEventListener('click', () => selectUser(ADMIN));
+        $('login-back-btn').addEventListener('click', showLogin);
+        $('login-form').addEventListener('submit', (e) => { e.preventDefault(); attemptLogin(); });
 
-        document.getElementById('setup-save-btn').addEventListener('click', saveSetupPassword);
-        setupPasswordRepeat.addEventListener('keypress', (e) => { if (e.key === 'Enter') saveSetupPassword(); });
-        document.getElementById('setup-logout-btn').addEventListener('click', logout);
+        // Setup & Willkommen
+        $('setup-form').addEventListener('submit', (e) => { e.preventDefault(); saveSetupPassword(); });
+        [setupPassword, setupPasswordRepeat].forEach(input => input.addEventListener('input', updateSetupChecks));
+        $('setup-logout-btn').addEventListener('click', logout);
+        $('welcome-pic-btn').addEventListener('click', () => pickProfilePic('welcome'));
+        $('welcome-save-btn').addEventListener('click', saveWelcome);
+        $('welcome-skip-btn').addEventListener('click', () => showTab('home'));
 
-        const logouts = [menuLogoutBtn, document.getElementById('putzplan-logout-btn'), document.getElementById('shopping-logout-btn'), document.getElementById('finance-logout-btn'), adminLogoutBtn];
-        logouts.forEach(btn => btn?.addEventListener('click', logout));
+        // Navigation: Tab-Leiste und alle Elemente mit data-tab (Karten, Avatar)
+        document.querySelectorAll('[data-tab]').forEach(el => el.addEventListener('click', () => showTab(el.dataset.tab)));
+        document.querySelectorAll('[data-action="logout"]').forEach(btn => btn.addEventListener('click', logout));
 
-        menuPutzplanBtn.addEventListener('click', showPutzplan);
-        menuShoppingBtn.addEventListener('click', showShopping);
-        menuFinanceBtn.addEventListener('click', showFinance);
-        menuProfileBtn.addEventListener('click', () => showProfile());
-        menuAdminBtn.addEventListener('click', showAdmin);
-
-        putzplanBackBtn.addEventListener('click', showMenu);
-        prevWeekBtn.addEventListener('click', () => { currentWeekOffset--; updatePutzplan(); });
-        nextWeekBtn.addEventListener('click', () => { currentWeekOffset++; updatePutzplan(); });
+        // Übersicht & Putzplan
+        $('home-task-btn').addEventListener('click', toggleHomeTask);
+        $('prev-week-btn').addEventListener('click', () => { currentWeekOffset--; updatePutzplan(); });
+        $('next-week-btn').addEventListener('click', () => { currentWeekOffset++; updatePutzplan(); });
         taskDoneCheckbox.addEventListener('change', handleTaskToggle);
 
-        shoppingBackBtn.addEventListener('click', showMenu);
-        shoppingAddBtn.addEventListener('click', addShoppingItem);
-        shoppingInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') addShoppingItem(); });
+        // Einkauf
+        $('shopping-form').addEventListener('submit', (e) => { e.preventDefault(); addShoppingItem(); });
 
-        financeBackBtn.addEventListener('click', showMenu);
-        financeAddBtn.addEventListener('click', () => openExpenseModal());
+        // Finanzen
+        $('finance-add-btn').addEventListener('click', () => openExpenseModal());
+        $('expense-save-btn').addEventListener('click', saveExpense);
+        $('expense-delete-btn').addEventListener('click', deleteExpense);
+        $('expense-amount').addEventListener('input', () => { if (splitType === 'equal') renderExpenseSplits(); });
+        document.querySelectorAll('[data-split]').forEach(btn => btn.addEventListener('click', () => {
+            splitType = btn.dataset.split;
+            renderExpenseSplits();
+        }));
 
-        adminBackBtn.addEventListener('click', showMenu);
+        // Profil
+        $('profile-pic-input').addEventListener('change', handleProfilePicChange);
+        $('profile-pic-btn').addEventListener('click', () => pickProfilePic('profile'));
+        $('profile-pic-remove-btn').addEventListener('click', () => saveProfileFields({ profilePic: '' }));
+        $('profile-paypal-input').addEventListener('change', (e) => saveProfileFields({ paypal: e.target.value.trim() }));
+        $('profile-phone-input').addEventListener('change', (e) => saveProfileFields({ phone: e.target.value.trim() }));
+        $('profile-password-btn').addEventListener('click', openPasswordModal);
+        $('password-save-btn').addEventListener('click', saveOwnPassword);
 
+        // Admin
+        $('admin-add-user-btn').addEventListener('click', () => openAdminUserModal());
+        $('admin-own-password-btn').addEventListener('click', openPasswordModal);
+        $('admin-password-save-btn').addEventListener('click', saveAdminPassword);
+        $('admin-user-save-btn').addEventListener('click', saveAdminUser);
+        contextMenu.addEventListener('click', (e) => {
+            const item = e.target.closest('[data-menu]');
+            if (!item || !menuTarget) return;
+            const name = menuTarget;
+            closeContextMenu();
+            if (item.dataset.menu === 'reset') openAdminPasswordModal(name);
+            if (item.dataset.menu === 'replace') openAdminUserModal(name);
+            if (item.dataset.menu === 'delete') deleteUser(name);
+        });
+        document.addEventListener('click', (e) => {
+            if (!contextMenu.hidden && !contextMenu.contains(e.target) && !e.target.closest('.more-btn')) closeContextMenu();
+        });
+        window.addEventListener('scroll', closeContextMenu, { passive: true });
+        window.addEventListener('resize', closeContextMenu);
+
+        // Sheets: Hintergrund/✕/Escape schließt, Enter in einem Feld sichert
         modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
         document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', closeModal));
-
-        document.getElementById('expense-split-type').addEventListener('change', renderExpenseSplits);
-        document.getElementById('expense-amount').addEventListener('input', () => {
-            if (document.getElementById('expense-split-type').value === 'equal') renderExpenseSplits();
+        modalOverlay.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+                e.preventDefault();
+                e.target.closest('.sheet').querySelector('.circle-btn-primary').click();
+            }
         });
-        document.getElementById('expense-save-btn').addEventListener('click', saveExpense);
-
-        document.getElementById('profile-save-btn').addEventListener('click', saveProfile);
-        document.getElementById('profile-pic-input').addEventListener('change', handleProfilePicChange);
-        document.getElementById('profile-pic-btn').addEventListener('click', () => document.getElementById('profile-pic-input').click());
-        document.getElementById('profile-pic-remove-btn').addEventListener('click', () => setProfilePicPreview(''));
-        document.getElementById('profile-password-btn').addEventListener('click', openPasswordModal);
-        document.getElementById('password-save-btn').addEventListener('click', saveOwnPassword);
-
-        document.getElementById('admin-password-save-btn').addEventListener('click', saveAdminPassword);
-        document.getElementById('admin-add-user-btn').addEventListener('click', () => openAdminUserModal());
-        document.getElementById('admin-user-save-btn').addEventListener('click', saveAdminUser);
-        document.getElementById('admin-own-password-btn').addEventListener('click', openPasswordModal);
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Escape') return;
+            closeContextMenu();
+            closeModal();
+        });
 
         // Security: Aktivität tracken
         ['mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
-            window.addEventListener(evt, () => { lastActivity = Date.now(); });
+            window.addEventListener(evt, () => { lastActivity = Date.now(); }, { passive: true });
         });
 
         setInterval(checkSecurityTimeout, 30000); // Alle 30 Sek prüfen
@@ -251,6 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         authToken = null;
         publicUsers = {};
         closeModal();
+        closeContextMenu();
         showLogin();
     }
 
@@ -280,35 +272,49 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderLogin() {
-        userGrid.innerHTML = '';
-        if (!WG_DATA || !WG_DATA.flatmates) return;
-        WG_DATA.flatmates.concat([ADMIN]).forEach(name => {
+        userList.innerHTML = '';
+        WG_DATA.flatmates.forEach(name => {
             const btn = document.createElement('button');
-            btn.className = 'user-btn glass-card';
-            btn.textContent = name;
-            btn.addEventListener('click', () => {
-                selectedUserForLogin = name;
-                userGrid.style.display = 'none';
-                passwordSection.style.display = 'block';
-                passwordPrompt.textContent = `Passwort für ${name}:`;
-                passwordInput.focus();
-            });
-            userGrid.appendChild(btn);
+            btn.type = 'button';
+            btn.className = 'row row-button';
+            btn.innerHTML = `${avatarHtml(name, 'avatar-sm', { photo: false })}<span class="row-body"><span class="row-title">${esc(name)}</span><span class="chevron" aria-hidden="true"></span></span>`;
+            btn.addEventListener('click', () => selectUser(name));
+            userList.appendChild(btn);
         });
+    }
+
+    function selectUser(name) {
+        selectedUserForLogin = name;
+        $('login-avatar').outerHTML = avatarHtml(name, 'avatar-xl', { id: 'login-avatar', photo: false });
+        $('login-hello').textContent = `Hallo, ${name}`;
+        $('login-username').value = name;
+        passwordInput.value = '';
+        loginError.textContent = '';
+        showView('password-view');
+        passwordInput.focus();
     }
 
     // Neues Passwort festlegen: beim ersten Login (onboarded=false) oder nach Admin-Reset
     function showSetup(user) {
-        hideAllViews();
-        setupView.classList.add('active');
-        setupTitle.textContent = user.onboarded ? 'Neues Passwort' : `Willkommen, ${user.name}!`;
-        setupSubtitle.textContent = user.onboarded
-            ? 'Dein Passwort wurde zurückgesetzt. Bitte lege ein neues fest.'
-            : 'Lege zuerst dein eigenes Passwort fest.';
+        const firstTime = !user.onboarded && !user.isAdmin;
+        $('setup-title').textContent = user.onboarded ? 'Neues Passwort' : `Willkommen, ${user.name}!`;
+        $('setup-subtitle').textContent = user.onboarded
+            ? 'Dein Passwort wurde zurückgesetzt. Lege ein neues fest.'
+            : 'Lege dein eigenes Passwort fest. Das Startpasswort vom Admin gilt danach nicht mehr.';
+        $('setup-steps').hidden = !firstTime;
+        $('setup-save-btn').textContent = firstTime ? 'Weiter' : 'Speichern';
         setupPassword.value = '';
         setupPasswordRepeat.value = '';
         setupError.textContent = '';
+        updateSetupChecks();
+        showView('setup-view');
         setupPassword.focus();
+    }
+
+    function updateSetupChecks() {
+        const password = setupPassword.value;
+        $('setup-check-length').classList.toggle('ok', password.length >= MIN_PASSWORD_LENGTH);
+        $('setup-check-match').classList.toggle('ok', password.length > 0 && password === setupPasswordRepeat.value);
     }
 
     async function saveSetupPassword() {
@@ -327,28 +333,69 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    // --- View Switching ---
-    function hideAllViews() { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); }
-    function showMenu() {
-        hideAllViews();
-        menuView.classList.add('active');
-        menuUserName.textContent = currentUser;
-
-        // Admin sieht NUR den Admin-Button, andere sehen ALLES AUẞER den Admin-Button
-        const isAdmin = (currentUser === ADMIN);
-        menuAdminBtn.style.display = isAdmin ? 'flex' : 'none';
-        menuPutzplanBtn.style.display = isAdmin ? 'none' : 'flex';
-        menuShoppingBtn.style.display = isAdmin ? 'none' : 'flex';
-        menuFinanceBtn.style.display = isAdmin ? 'none' : 'flex';
-        menuProfileBtn.style.display = isAdmin ? 'none' : 'flex';
+    // Einmalige Profil-Einrichtung (alles freiwillig)
+    function showWelcome() {
+        const user = publicUsers[currentUser] || {};
+        welcomePic = user.profilePic || '';
+        renderWelcomeAvatar();
+        $('welcome-paypal').value = user.paypal || '';
+        $('welcome-phone').value = user.phone || '';
+        $('welcome-error').textContent = '';
+        showView('welcome-view');
+        // Einrichtung gilt als erledigt, sobald sie einmal gezeigt wurde – auch bei "Später"
+        apiJson('/api/me/profile', 'PUT', {}).catch(() => {});
     }
-    function showLogin() { hideAllViews(); loginView.classList.add('active'); userGrid.style.display = 'grid'; passwordSection.style.display = 'none'; }
-    function showPutzplan() { hideAllViews(); putzplanView.classList.add('active'); currentWeekOffset = 0; updatePutzplan(); }
-    function showShopping() { hideAllViews(); shoppingView.classList.add('active'); loadShoppingList(); }
-    function showFinance() { hideAllViews(); financeView.classList.add('active'); loadFinances(); }
+
+    function renderWelcomeAvatar() {
+        $('welcome-avatar').outerHTML = avatarHtml(currentUser, 'avatar-xl', { id: 'welcome-avatar', src: welcomePic });
+        $('welcome-pic-btn').textContent = welcomePic ? 'Foto ändern' : 'Foto hinzufügen';
+    }
+
+    async function saveWelcome() {
+        const body = { paypal: $('welcome-paypal').value.trim(), phone: $('welcome-phone').value.trim(), profilePic: welcomePic };
+        try {
+            const result = await apiJson('/api/me/profile', 'PUT', body);
+            if (!result.success) { $('welcome-error').textContent = result.message || 'Fehler beim Speichern.'; return; }
+            await fetchPublicUsers();
+            showTab('home');
+        } catch (err) { $('welcome-error').textContent = 'Fehler beim Speichern.'; }
+    }
+
+    // --- View Switching ---
+    function showView(id) {
+        document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === id));
+        tabBar.hidden = !$(id).classList.contains('app-view');
+        window.scrollTo(0, 0);
+    }
+
+    function showLogin() {
+        selectedUserForLogin = null;
+        showView('login-view');
+    }
+
+    const TABS = {
+        home: ['home-view', loadHome],
+        putzplan: ['putzplan-view', () => { currentWeekOffset = 0; updatePutzplan(); }],
+        shopping: ['shopping-view', loadShoppingList],
+        finance: ['finance-view', loadFinances],
+        profile: ['profile-view', renderProfile],
+    };
+
+    function showTab(name) {
+        if (!currentUser || currentUser === ADMIN) return;
+        const [viewId, load] = TABS[name];
+        showView(viewId);
+        tabBar.querySelectorAll('.tab').forEach(tab => {
+            const active = tab.dataset.tab === name;
+            tab.classList.toggle('active', active);
+            if (active) tab.setAttribute('aria-current', 'page');
+            else tab.removeAttribute('aria-current');
+        });
+        load();
+    }
+
     function showAdmin() {
-        hideAllViews();
-        adminView.classList.add('active');
+        showView('admin-view');
         loadAdminUsers();
     }
 
@@ -361,22 +408,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderAdminUserList(users) {
-        adminUserList.innerHTML = '';
+        const list = $('admin-user-list');
+        list.innerHTML = '';
         users.forEach(({ name, mustChangePassword }) => {
-            const div = document.createElement('div');
-            div.className = 'finance-item glass-card';
-            const status = mustChangePassword ? 'Hat noch kein eigenes Passwort' : 'Bewohner';
-            div.innerHTML = `<div class="item-main"><div><div class="item-title">${esc(name)}</div><div class="item-subtitle">${status}</div></div></div>
-                <div class="item-actions" style="width:100%; display:flex; flex-wrap:wrap; gap:10px; border-top:1px solid var(--border); padding-top:10px;">
-                    <button class="btn-text btn-sm reset-pw-btn">PW zurücksetzen</button>
-                    <button class="btn-text btn-sm replace-btn">Ersetzen</button>
-                    <button class="btn-text btn-sm delete-btn" style="color:var(--error);">Löschen</button>
-                </div>`;
-            div.querySelector('.reset-pw-btn').addEventListener('click', () => openAdminPasswordModal(name));
-            div.querySelector('.replace-btn').addEventListener('click', () => openAdminUserModal(name));
-            div.querySelector('.delete-btn').addEventListener('click', () => deleteUser(name));
-            adminUserList.appendChild(div);
+            const li = document.createElement('li');
+            li.className = 'row row-tall';
+            const status = mustChangePassword
+                ? '<span class="badge">Startpasswort aktiv</span>'
+                : '<span class="row-sub">Eigenes Passwort</span>';
+            li.innerHTML = `${avatarHtml(name)}<span class="row-body"><span class="row-text"><span>${esc(name)}</span>${status}</span>
+                <button type="button" class="more-btn" aria-label="Aktionen für ${esc(name)}" aria-haspopup="menu">${ICON_MORE}</button></span>`;
+            li.querySelector('.more-btn').addEventListener('click', (e) => openContextMenu(name, e.currentTarget));
+            list.appendChild(li);
         });
+    }
+
+    function openContextMenu(name, anchor) {
+        if (menuTarget === name && !contextMenu.hidden) return closeContextMenu();
+        menuTarget = name;
+        contextMenu.setAttribute('aria-label', `Aktionen für ${name}`);
+        contextMenu.hidden = false;
+        const rect = anchor.getBoundingClientRect();
+        const menuHeight = contextMenu.offsetHeight;
+        const below = rect.bottom + 6 + menuHeight < window.innerHeight;
+        contextMenu.style.top = `${below ? rect.bottom + 6 : Math.max(8, rect.top - menuHeight - 6)}px`;
+        contextMenu.style.right = `${Math.max(8, window.innerWidth - rect.right)}px`;
+        contextMenu.querySelector('button').focus({ preventScroll: true });
+    }
+
+    function closeContextMenu() {
+        contextMenu.hidden = true;
+        menuTarget = null;
     }
 
     // Nach Änderungen: Admin-Liste und Login-Auswahl aktualisieren
@@ -388,22 +450,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Ohne "replaces": neuen Bewohner anlegen. Mit: Bewohner ersetzen (übernimmt den Platz im Putzplan)
     function openAdminUserModal(replaces = '') {
-        document.getElementById('admin-user-replaces').value = replaces;
-        document.getElementById('admin-user-title').textContent = replaces ? `${replaces} ersetzen` : 'Neuer Bewohner';
-        document.getElementById('admin-user-hint').textContent = replaces
+        $('admin-user-replaces').value = replaces;
+        $('admin-user-title').textContent = replaces ? `${replaces} ersetzen` : 'Neuer Bewohner';
+        $('admin-user-hint').textContent = replaces
             ? `Übernimmt den Platz von ${replaces} im Putzplan. Alte Ausgaben und Schulden bleiben unter ${replaces}.`
             : 'Der Putzplan wird danach neu verteilt.';
-        document.getElementById('admin-user-name').value = '';
-        document.getElementById('admin-user-password').value = '';
-        document.getElementById('admin-user-error').textContent = '';
-        openModal(adminUserModal);
+        $('admin-user-name').value = '';
+        $('admin-user-password').value = '';
+        $('admin-user-error').textContent = '';
+        openModal($('admin-user-modal'));
+        $('admin-user-name').focus();
     }
 
     async function saveAdminUser() {
-        const replaces = document.getElementById('admin-user-replaces').value;
-        const username = document.getElementById('admin-user-name').value.trim();
-        const password = document.getElementById('admin-user-password').value;
-        const errorEl = document.getElementById('admin-user-error');
+        const replaces = $('admin-user-replaces').value;
+        const username = $('admin-user-name').value.trim();
+        const password = $('admin-user-password').value;
+        const errorEl = $('admin-user-error');
         if (!username || !password.trim()) { errorEl.textContent = 'Bitte Name und Startpasswort eingeben.'; return; }
         try {
             const result = await apiJson('/api/users', 'POST', { username, password, ...(replaces && { replaces }) });
@@ -426,25 +489,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function openAdminPasswordModal(name) {
-        document.getElementById('admin-target-user').value = name;
-        document.getElementById('admin-target-name').textContent = name;
-        document.getElementById('admin-new-password').value = '';
-        document.getElementById('admin-password-feedback').textContent = '';
-        document.getElementById('admin-password-error').textContent = '';
-        openModal(adminPasswordModal);
+        $('admin-target-user').value = name;
+        $('admin-target-name').textContent = name;
+        $('admin-new-password').value = '';
+        $('admin-password-feedback').textContent = '';
+        $('admin-password-error').textContent = '';
+        openModal($('admin-password-modal'));
+        $('admin-new-password').focus();
     }
 
     async function saveAdminPassword() {
-        const username = document.getElementById('admin-target-user').value;
-        const password = document.getElementById('admin-new-password').value;
-        const errorEl = document.getElementById('admin-password-error');
+        const username = $('admin-target-user').value;
+        const password = $('admin-new-password').value;
+        const errorEl = $('admin-password-error');
         if (!password.trim()) { errorEl.textContent = 'Bitte ein vorläufiges Passwort eingeben.'; return; }
         try {
             const result = await apiJson(`/api/users/${encodeURIComponent(username)}/reset-password`, 'POST', { password });
             if (result.success) {
-                document.getElementById('admin-password-feedback').textContent = 'Zurückgesetzt!';
+                errorEl.textContent = '';
+                $('admin-password-feedback').textContent = 'Zurückgesetzt!';
                 loadAdminUsers();
-                setTimeout(closeModal, 1500);
+                setTimeout(closeModal, 1200);
             } else {
                 errorEl.textContent = result.message || 'Fehler beim Speichern.';
             }
@@ -453,25 +518,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Eigenes Passwort ändern ---
     function openPasswordModal() {
-        ['password-current', 'password-new', 'password-repeat'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('password-feedback').textContent = '';
-        document.getElementById('password-error').textContent = '';
+        ['password-current', 'password-new', 'password-repeat'].forEach(id => $(id).value = '');
+        $('password-feedback').textContent = '';
+        $('password-error').textContent = '';
         closeModal();
-        openModal(passwordModal);
+        openModal($('password-modal'));
+        $('password-current').focus();
     }
 
     async function saveOwnPassword() {
-        const currentPassword = document.getElementById('password-current').value;
-        const newPassword = document.getElementById('password-new').value;
-        const errorEl = document.getElementById('password-error');
-        const problem = checkPasswordInputs(newPassword, document.getElementById('password-repeat').value);
+        const currentPassword = $('password-current').value;
+        const newPassword = $('password-new').value;
+        const errorEl = $('password-error');
+        const problem = checkPasswordInputs(newPassword, $('password-repeat').value);
         if (problem) { errorEl.textContent = problem; return; }
         try {
             const result = await apiJson('/api/me/password', 'PUT', { currentPassword, newPassword });
             if (result.success) {
                 errorEl.textContent = '';
-                document.getElementById('password-feedback').textContent = 'Passwort geändert!';
-                setTimeout(closeModal, 1500);
+                $('password-feedback').textContent = 'Passwort geändert!';
+                setTimeout(closeModal, 1200);
             } else {
                 errorEl.textContent = result.message || 'Fehler beim Speichern.';
             }
@@ -498,57 +564,78 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetMonday = new Date(startDate);
         targetMonday.setDate(targetMonday.getDate() + (targetWeekIndex * 7));
         const targetSunday = new Date(targetMonday); targetSunday.setDate(targetSunday.getDate() + 6);
-        const fmt = (d) => {
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            return `${dd}.${mm}.${d.getFullYear()}`;
-        };
         const assignments = WG_DATA.roles.map((role, roleIndex) => {
             let pIdx = (roleIndex + targetWeekIndex) % WG_DATA.flatmates.length;
             if (pIdx < 0) pIdx += WG_DATA.flatmates.length;
             return { role, assignee: WG_DATA.flatmates[pIdx] };
         });
-        let title = "Aktuelle Woche";
-        if (offsetOffset === -1) title = "Vergangene Woche";
-        else if (offsetOffset === 1) title = "Kommende Woche";
-        else if (offsetOffset !== 0) title = `Woche ${targetWeekIndex + 1}`;
-        return { title, dateString: `${fmt(targetMonday)} - ${fmt(targetSunday)}`, weekKey: `${targetMonday.getFullYear()}-W${String(targetWeekIndex).padStart(2, '0')}`, assignments };
+        let title = "Diese Woche";
+        if (offsetOffset === -1) title = "Letzte Woche";
+        else if (offsetOffset === 1) title = "Nächste Woche";
+        else if (offsetOffset !== 0) title = offsetOffset < 0 ? `Vor ${-offsetOffset} Wochen` : `In ${offsetOffset} Wochen`;
+        const isoWeek = getIsoWeek(targetMonday);
+        return {
+            title,
+            isoWeek,
+            dateString: `${formatRange(targetMonday, targetSunday)} · KW ${isoWeek}`,
+            weekKey: `${targetMonday.getFullYear()}-W${String(targetWeekIndex).padStart(2, '0')}`,
+            assignments
+        };
+    }
+
+    function getIsoWeek(date) {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+    }
+
+    // "20.–26. Oktober" bzw. "27. Okt. – 2. Nov."
+    function formatRange(from, to) {
+        if (from.getMonth() === to.getMonth()) {
+            return `${from.getDate()}.–${to.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })}`;
+        }
+        const short = { day: 'numeric', month: 'short' };
+        return `${from.toLocaleDateString('de-DE', short)} – ${to.toLocaleDateString('de-DE', short)}`;
+    }
+
+    async function fetchTaskStatuses(weekKey) {
+        try {
+            const result = await apiJson(`/api/tasks/${weekKey}`);
+            if (result.success) return result.data;
+        } catch (err) {}
+        return {};
     }
 
     async function updatePutzplan() {
-        currentWeekData = getWeekData(currentWeekOffset);
-        weekTitle.textContent = currentWeekData.title;
-        weekDate.textContent = currentWeekData.dateString;
-        let statuses = {};
-        try {
-            const result = await apiJson(`/api/tasks/${currentWeekData.weekKey}`);
-            if (result.success) statuses = result.data;
-        } catch (err) {}
-        const myAsgn = currentWeekData.assignments.find(a => a.assignee === currentUser);
-        if (myAsgn) {
-            myTaskTitle.textContent = myAsgn.role.title;
-            myTaskDesc.textContent = myAsgn.role.description;
-            taskDoneCheckbox.checked = !!statuses[currentUser];
-            const isPause = myAsgn.role.id === 'p';
-            const isFuture = currentWeekOffset > 0;
-            taskDoneCheckbox.disabled = isPause || isFuture;
-            document.querySelector('.my-task').classList.toggle('is-pause', isPause);
-        } else {
-            // Mehr Bewohner als Aufgaben: wer keine Rolle hat, ist frei
-            myTaskTitle.textContent = 'Frei';
-            myTaskDesc.textContent = 'Diese Woche hast du keine Aufgabe.';
-            taskDoneCheckbox.checked = false;
-            taskDoneCheckbox.disabled = true;
-            document.querySelector('.my-task').classList.add('is-pause');
-        }
-        allTasksGrid.innerHTML = '';
-        currentWeekData.assignments.forEach(asgn => {
+        const week = currentWeekData = getWeekData(currentWeekOffset);
+        $('current-week-title').textContent = week.title;
+        $('current-week-date').textContent = week.dateString;
+        const statuses = await fetchTaskStatuses(week.weekKey);
+        if (week !== currentWeekData) return; // schon weitergeblättert
+
+        const myAsgn = week.assignments.find(a => a.assignee === currentUser);
+        const isPause = !myAsgn || myAsgn.role.id === 'p';
+        const isFuture = currentWeekOffset > 0;
+        // Mehr Bewohner als Aufgaben: wer keine Rolle hat, ist frei
+        $('my-task-title').textContent = myAsgn ? myAsgn.role.title : 'Frei';
+        $('my-task-desc').textContent = myAsgn ? myAsgn.role.description : 'Diese Woche hast du keine Aufgabe.';
+        taskDoneCheckbox.checked = !isPause && !!statuses[currentUser];
+        taskDoneCheckbox.disabled = isPause || isFuture;
+        $('task-done-row').classList.toggle('is-disabled', taskDoneCheckbox.disabled);
+
+        const list = $('all-tasks-list');
+        list.innerHTML = '';
+        week.assignments.forEach(asgn => {
             const isMe = asgn.assignee === currentUser;
-            const isDone = !!statuses[asgn.assignee];
-            const card = document.createElement('div');
-            card.className = `glass-card task-card ${isMe ? 'is-me' : ''} ${isDone ? 'is-done' : ''}`;
-            card.innerHTML = `<div class="task-card-header"><span class="task-card-title">${esc(asgn.role.title)}</span></div><div style="margin-top:10px;font-size:0.9em;">${isDone ? '<span style="color:var(--success)">Erledigt</span>' : '<span style="color:var(--text-muted)">Offen</span>'}</div><div class="task-card-assignee">${isMe ? 'Du' : esc(asgn.assignee)}</div>`;
-            allTasksGrid.appendChild(card);
+            const status = asgn.role.id === 'p'
+                ? '<span class="status-free">Frei</span>'
+                : (statuses[asgn.assignee] ? ICON_CHECK : ICON_OPEN);
+            const li = document.createElement('li');
+            li.className = `row row-tall ${isMe ? 'task-mine' : ''}`;
+            li.innerHTML = `${avatarHtml(asgn.assignee)}<span class="row-body"><span class="row-text"><span>${esc(asgn.role.title)}</span>
+                <span class="row-sub ${isMe ? 'row-sub-me' : ''}">${isMe ? 'Du' : esc(asgn.assignee)}</span></span>${status}</span>`;
+            list.appendChild(li);
         });
     }
 
@@ -561,6 +648,77 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) { e.target.checked = !isCompleted; }
     }
 
+    // --- Übersicht ---
+    async function loadHome() {
+        $('home-date').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+        $('home-avatar').innerHTML = '';
+        $('home-avatar').className = `avatar avatar-md avatar-button ${avatarColor(currentUser)}`;
+        fillAvatar($('home-avatar'), currentUser);
+
+        const week = getWeekData(0);
+        $('home-week').textContent = `KW ${week.isoWeek}`;
+        const [statuses, shopping, expenseList] = await Promise.all([
+            fetchTaskStatuses(week.weekKey),
+            apiJson('/api/shopping').then(r => r.success ? r.data : null).catch(() => null),
+            apiJson('/api/expenses').then(r => r.success ? r.data : null).catch(() => null),
+        ]);
+
+        renderHomeTask(week, statuses);
+
+        const shoppingEl = $('home-shopping');
+        shoppingEl.textContent = shopping === null ? '–' : (shopping.length === 0 ? 'Alles da' : `${shopping.length} ${shopping.length === 1 ? 'Ding' : 'Dinge'}`);
+
+        const balanceEl = $('home-balance');
+        if (expenseList === null) {
+            balanceEl.textContent = '–';
+        } else {
+            const balance = computeBalances(expenseList)[currentUser] || 0;
+            balanceEl.textContent = signedMoney.format(roundCents(balance));
+            balanceEl.className = `stat-value ${balanceClass(balance)}`;
+        }
+
+        // Alle Bewohner mit ihrer Aufgabe der Woche
+        const wg = $('home-wg');
+        wg.innerHTML = '';
+        WG_DATA.flatmates.forEach(name => {
+            const asgn = week.assignments.find(a => a.assignee === name);
+            const isMe = name === currentUser;
+            const done = asgn && asgn.role.id !== 'p' && statuses[name];
+            const person = document.createElement('span');
+            person.className = 'wg-person';
+            person.innerHTML = `${avatarHtml(name, 'avatar-lg', { extraClass: isMe ? 'is-me' : '', badge: done })}
+                <span class="wg-name ${isMe ? 'me' : ''}">${isMe ? 'Du' : esc(name)}</span>
+                <span class="wg-role">${asgn ? esc(asgn.role.short) : 'Frei'}</span>`;
+            wg.appendChild(person);
+        });
+    }
+
+    function renderHomeTask(week, statuses) {
+        const myAsgn = week.assignments.find(a => a.assignee === currentUser);
+        const isPause = !myAsgn || myAsgn.role.id === 'p';
+        const done = !isPause && !!statuses[currentUser];
+        $('home-task-title').textContent = myAsgn ? myAsgn.role.title : 'Frei';
+        $('home-task-desc').textContent = myAsgn ? myAsgn.role.description : 'Diese Woche hast du keine Aufgabe.';
+        const btn = $('home-task-btn');
+        btn.hidden = isPause;
+        btn.classList.toggle('is-done', done);
+        btn.setAttribute('aria-pressed', String(done));
+        btn.innerHTML = done ? `${ICON_TICK} Erledigt` : `${ICON_TICK} Als erledigt markieren`;
+        btn.dataset.weekKey = week.weekKey;
+        btn.dataset.done = String(done);
+    }
+
+    async function toggleHomeTask() {
+        const btn = $('home-task-btn');
+        btn.disabled = true;
+        try {
+            const result = await apiJson(`/api/tasks/${btn.dataset.weekKey}`, 'POST', { completed: btn.dataset.done !== 'true' });
+            if (!result.success) alert(result.message);
+            await loadHome();
+        } catch (err) {}
+        btn.disabled = false;
+    }
+
     // --- Shopping Logic ---
     async function loadShoppingList() {
         try {
@@ -570,27 +728,40 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Shopping Error:", err);
         }
     }
+
     function renderShoppingList(items) {
         shoppingList.innerHTML = '';
-        shoppingEmpty.style.display = items.length === 0 ? 'block' : 'none';
+        $('shopping-count').textContent = items.length || '';
+        $('shopping-count').setAttribute('aria-label', `${items.length} offen`);
+        $('shopping-empty').hidden = items.length > 0;
         items.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'shopping-item glass-card';
-            div.innerHTML = `<span>${esc(item.text)}</span><button class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><polyline points="20 6 9 17 4 12"/></svg></button>`;
-            div.querySelector('button').addEventListener('click', () => deleteShoppingItem(item.id));
-            shoppingList.appendChild(div);
+            const li = document.createElement('li');
+            li.className = 'check-row';
+            li.innerHTML = `<button type="button" class="check-circle" aria-label="${esc(item.text)} abhaken"></button><span class="check-text">${esc(item.text)}</span>`;
+            li.querySelector('button').addEventListener('click', () => checkShoppingItem(li, item.id), { once: true });
+            shoppingList.appendChild(li);
         });
     }
+
+    // Abhaken: kurz als erledigt zeigen, dann von der Liste nehmen
+    async function checkShoppingItem(li, id) {
+        li.classList.add('is-checked', 'is-leaving');
+        const wait = new Promise(resolve => setTimeout(resolve, 750));
+        try { await apiJson(`/api/shopping/${encodeURIComponent(id)}`, 'DELETE'); } catch (err) {}
+        await wait;
+        loadShoppingList();
+    }
+
     async function addShoppingItem() {
         const text = shoppingInput.value.trim();
         if (!text) return;
         try {
             const result = await apiJson('/api/shopping', 'POST', { text });
             if (!result.success) return alert(result.message);
-            shoppingInput.value = ''; loadShoppingList();
+            shoppingInput.value = '';
+            loadShoppingList();
         } catch (err) {}
     }
-    async function deleteShoppingItem(id) { try { await apiJson(`/api/shopping/${encodeURIComponent(id)}`, 'DELETE'); loadShoppingList(); } catch (err) {} }
 
     // --- Finance Logic ---
     async function loadFinances() {
@@ -599,41 +770,59 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) renderFinances(result.data);
         } catch (err) {}
     }
-    function renderFinances(expenses) {
+
+    function computeBalances(list) {
         const balances = {};
         WG_DATA.flatmates.forEach(name => balances[name] = 0);
         // Ehemalige Bewohner bleiben drin, damit ihre offenen Schulden sichtbar bleiben
-        expenses.forEach(exp => {
+        list.forEach(exp => {
             balances[exp.paidBy] = (balances[exp.paidBy] || 0) + exp.amount;
             for (const [user, share] of Object.entries(exp.splits)) { balances[user] = (balances[user] || 0) - share; }
         });
-        const myBalance = balances[currentUser] || 0;
-        financeTotalBalance.textContent = `${myBalance.toFixed(2)} €`;
-        financeTotalBalance.style.color = myBalance >= 0 ? 'var(--success)' : 'var(--error)';
-        renderDebts(balances);
-        financeExpensesList.innerHTML = '';
-        expenses.slice().reverse().forEach(exp => {
-            const div = document.createElement('div');
-            div.className = 'finance-item glass-card';
-            const date = new Date(exp.date).toLocaleDateString('de-DE');
-            let actionsHtml = '';
-            // Gleiche Regel wie auf dem Server: wer die Ausgabe angelegt hat, oder Admin
-            if (exp.addedBy === currentUser || currentUser === ADMIN) {
-                actionsHtml = `<div class="item-actions" style="width:100%; display:flex; gap:10px; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                    <button class="btn-text btn-sm edit-btn" style="color:var(--accent);">Bearbeiten</button>
-                    <button class="btn-text btn-sm delete-btn" style="color:var(--error);">Löschen</button>
-                </div>`;
-            }
-            div.innerHTML = `<div class="item-main"><div><div class="item-title">${esc(exp.description)}</div><div class="item-subtitle">${esc(date)} • Bezahlt von ${esc(exp.paidBy)}</div></div><div class="item-amount">${Number(exp.amount).toFixed(2)} €</div></div>${actionsHtml}`;
-            const delBtn = div.querySelector('.delete-btn');
-            if (delBtn) delBtn.addEventListener('click', () => deleteExpense(exp.id));
-            const editBtn = div.querySelector('.edit-btn');
-            if (editBtn) editBtn.addEventListener('click', () => openExpenseModal(exp));
-            financeExpensesList.appendChild(div);
-        });
+        return balances;
     }
+
+    function renderFinances(list) {
+        expenses = list;
+        const balances = computeBalances(list);
+        const myBalance = balances[currentUser] || 0;
+        const balanceEl = $('finance-total-balance');
+        balanceEl.textContent = signedMoney.format(roundCents(myBalance));
+        balanceEl.className = `balance-amount ${balanceClass(myBalance)}`;
+        $('finance-balance-text').textContent = myBalance > 0.005 ? 'Du bekommst insgesamt Geld zurück.'
+            : myBalance < -0.005 ? 'Du schuldest insgesamt Geld.' : 'Alles ausgeglichen.';
+        renderDebts(balances);
+
+        const listEl = $('finance-expenses-list');
+        listEl.innerHTML = '';
+        let anyEditable = false;
+        list.slice().reverse().forEach(exp => {
+            // Gleiche Regel wie auf dem Server: wer die Ausgabe angelegt hat, oder Admin
+            const editable = exp.addedBy === currentUser || currentUser === ADMIN;
+            anyEditable ||= editable;
+            const date = new Date(exp.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+            const payer = exp.paidBy === currentUser ? 'Du' : exp.paidBy;
+            const li = document.createElement('li');
+            li.className = `row row-tall ${editable ? 'row-tappable' : ''}`;
+            li.innerHTML = `${avatarHtml(exp.paidBy)}<span class="row-body"><span class="row-text"><span>${esc(exp.description)}</span>
+                <span class="row-sub">${esc(payer)} · ${esc(date)}</span></span>
+                <span class="row-value">${money.format(Number(exp.amount))}</span>${editable ? '<span class="chevron" aria-hidden="true"></span>' : ''}</span>`;
+            if (editable) {
+                li.tabIndex = 0;
+                li.setAttribute('role', 'button');
+                li.setAttribute('aria-label', `${exp.description} bearbeiten`);
+                li.addEventListener('click', () => openExpenseModal(exp));
+                li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openExpenseModal(exp); } });
+            }
+            listEl.appendChild(li);
+        });
+        if (list.length === 0) listEl.innerHTML = '<li class="empty-row">Noch keine Ausgaben.</li>';
+        $('finance-expenses-hint').hidden = !anyEditable;
+    }
+
     function renderDebts(balances) {
-        financeDebtsList.innerHTML = '';
+        const listEl = $('finance-debts-list');
+        listEl.innerHTML = '';
         const debtors = [], creditors = [];
         for (const [name, bal] of Object.entries(balances)) {
             if (bal < -0.01) debtors.push({ name, bal: -bal });
@@ -644,129 +833,173 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (d.bal <= 0 || c.bal <= 0) return;
                 const amount = Math.min(d.bal, c.bal);
                 if (d.name === currentUser || c.name === currentUser) {
-                    const row = document.createElement('div');
-                    row.className = 'finance-item glass-card';
                     const isCreditor = c.name === currentUser;
                     const other = isCreditor ? d.name : c.name;
                     const text = isCreditor ? `${esc(other)} schuldet dir` : `Du schuldest ${esc(other)}`;
-                    let settleBtn = '';
+                    let actions = '';
                     if (!isCreditor) {
                         const paypal = publicUsers[other]?.paypal;
                         const paypalLink = paypal ? `https://paypal.me/${encodeURIComponent(paypal)}/${amount.toFixed(2)}` : null;
-                        settleBtn = `<div style="margin-top:10px;display:flex;gap:10px;width:100%;">
-                            <button class="btn btn-primary btn-sm settle-btn" style="flex:1;">Als bezahlt markieren</button>
-                            ${paypalLink ? `<a href="${esc(paypalLink)}" target="_blank" rel="noopener noreferrer" class="btn-paypal" style="flex:1;">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/></svg>
-                                PayPal
-                            </a>` : ''}
+                        actions = `<div class="debt-actions">
+                            ${paypalLink ? `<a href="${esc(paypalLink)}" target="_blank" rel="noopener noreferrer" class="pill pill-soft">PayPal ${ICON_EXTERNAL}</a>` : ''}
+                            <button type="button" class="pill pill-primary settle-btn">Bezahlt</button>
                         </div>`;
                     }
-                    row.innerHTML = `<div class="item-main"><div class="item-title">${text}</div><div class="item-amount">${amount.toFixed(2)} €</div></div>${settleBtn}`;
+                    const row = document.createElement('div');
+                    row.className = 'debt-row';
+                    row.innerHTML = `${avatarHtml(other)}<div class="debt-body"><div class="debt-line"><span>${text}</span>
+                        <span class="debt-amount ${isCreditor ? 'positive' : 'negative'}">${money.format(amount)}</span></div>${actions}</div>`;
                     const btn = row.querySelector('.settle-btn');
                     if (btn) btn.addEventListener('click', () => settleDebt(other, amount));
-                    financeDebtsList.appendChild(row);
+                    listEl.appendChild(row);
                 }
                 d.bal -= amount; c.bal -= amount;
             });
         });
+        if (!listEl.children.length) listEl.innerHTML = '<div class="empty-row">Keine offenen Beträge.</div>';
     }
+
     async function settleDebt(to, amount) {
-        if (!confirm(`${amount.toFixed(2)} € an ${to} als bezahlt markieren?`)) return;
+        if (!confirm(`${money.format(amount)} an ${to} als bezahlt markieren?`)) return;
         try {
             const result = await apiJson('/api/expenses', 'POST', { description: `Schuldenbegleichung an ${to}`, amount, paidBy: currentUser, splits: { [to]: amount } });
             if (!result.success) alert(result.message);
             loadFinances();
         } catch (err) {}
     }
-    async function deleteExpense(id) {
-        if (!confirm('Diese Ausgabe wirklich löschen?')) return;
+
+    async function deleteExpense() {
+        const id = $('editing-expense-id').value;
+        if (!id || !confirm('Diese Ausgabe wirklich löschen?')) return;
         try {
             const result = await apiJson(`/api/expenses/${encodeURIComponent(id)}`, 'DELETE');
-            if (!result.success) alert(result.message);
+            if (!result.success) { $('expense-error').textContent = result.message || 'Fehler beim Löschen.'; return; }
+            closeModal();
             loadFinances();
-        } catch (err) {}
+        } catch (err) { $('expense-error').textContent = 'Fehler beim Löschen.'; }
     }
 
     // --- Modal Logic ---
     function openModal(modal) { modalOverlay.classList.add('active'); modal.classList.add('active'); }
-    function closeModal() { modalOverlay.classList.remove('active'); document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); }
+    function closeModal() { modalOverlay.classList.remove('active'); document.querySelectorAll('.sheet').forEach(m => m.classList.remove('active')); }
+
     function openExpenseModal(expense = null) {
-        const title = document.getElementById('expense-modal-title');
-        const descInput = document.getElementById('expense-desc');
-        const amountInput = document.getElementById('expense-amount');
-        const payerSelect = document.getElementById('expense-payer');
-        const idInput = document.getElementById('editing-expense-id');
-        payerSelect.innerHTML = WG_DATA.flatmates.map(name => `<option value="${esc(name)}">${esc(name)}</option>`).join('');
-        if (expense) {
-            title.textContent = 'Ausgabe bearbeiten'; idInput.value = expense.id;
-            descInput.value = expense.description; amountInput.value = expense.amount;
-            payerSelect.value = expense.paidBy;
-            document.getElementById('expense-split-type').value = 'equal';
-        } else {
-            title.textContent = 'Neue Ausgabe'; idInput.value = ''; descInput.value = ''; amountInput.value = ''; payerSelect.value = currentUser;
-        }
-        renderExpenseSplits(); openModal(expenseModal);
+        $('expense-modal-title').textContent = expense ? 'Ausgabe bearbeiten' : 'Neue Ausgabe';
+        $('editing-expense-id').value = expense ? expense.id : '';
+        $('expense-desc').value = expense ? expense.description : '';
+        $('expense-amount').value = expense ? Number(expense.amount).toFixed(2).replace('.', ',') : '';
+        $('expense-delete-btn').hidden = !expense;
+        $('expense-error').textContent = '';
+        selectedPayer = expense ? expense.paidBy : currentUser;
+        splitType = 'equal';
+        renderPayerPicker(expense);
+        renderExpenseSplits();
+        openModal($('expense-modal'));
+        if (!expense) $('expense-amount').focus();
     }
-    function renderExpenseSplits() {
-        const container = document.getElementById('expense-split-list');
-        const type = document.getElementById('expense-split-type').value;
-        const amount = parseFloat(document.getElementById('expense-amount').value) || 0;
-        container.innerHTML = '';
-        if (!WG_DATA || !WG_DATA.flatmates) return;
-        WG_DATA.flatmates.forEach(name => {
-            const div = document.createElement('div'); div.className = 'split-row';
-            if (type === 'equal') { const share = (amount / WG_DATA.flatmates.length).toFixed(2); div.innerHTML = `<span>${esc(name)}</span><span>${share} €</span>`; }
-            else { div.innerHTML = `<span>${esc(name)}</span><input type="number" class="split-input input" data-user="${esc(name)}" placeholder="0.00" step="0.01">`; }
-            container.appendChild(div);
+
+    function renderPayerPicker(expense) {
+        const picker = $('expense-payer');
+        const names = WG_DATA.flatmates.slice();
+        // Ehemalige Bewohner bleiben bei alten Ausgaben auswählbar
+        if (expense && !names.includes(expense.paidBy)) names.push(expense.paidBy);
+        picker.innerHTML = '';
+        names.forEach(name => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'payer';
+            btn.setAttribute('role', 'radio');
+            btn.setAttribute('aria-checked', String(name === selectedPayer));
+            btn.innerHTML = `${avatarHtml(name)}<span>${name === currentUser ? 'Du' : esc(name)}</span>`;
+            btn.addEventListener('click', () => {
+                selectedPayer = name;
+                picker.querySelectorAll('.payer').forEach(b => b.setAttribute('aria-checked', String(b === btn)));
+            });
+            picker.appendChild(btn);
         });
     }
+
+    function renderExpenseSplits() {
+        document.querySelectorAll('[data-split]').forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.split === splitType)));
+        const container = $('expense-split-list');
+        const amount = parseAmount($('expense-amount').value) || 0;
+        container.innerHTML = '';
+        WG_DATA.flatmates.forEach(name => {
+            const li = document.createElement('li');
+            if (splitType === 'equal') {
+                li.innerHTML = `<span>${esc(name)}</span><span class="split-share">${money.format(amount / WG_DATA.flatmates.length)}</span>`;
+            } else {
+                li.innerHTML = `<label for="split-${esc(name)}">${esc(name)}</label><input type="text" inputmode="decimal" id="split-${esc(name)}" class="split-input" data-user="${esc(name)}" placeholder="0,00" autocomplete="off">`;
+            }
+            container.appendChild(li);
+        });
+    }
+
     async function saveExpense() {
-        const id = document.getElementById('editing-expense-id').value;
-        const desc = document.getElementById('expense-desc').value.trim();
-        const amount = parseFloat(document.getElementById('expense-amount').value);
-        const payer = document.getElementById('expense-payer').value;
-        const type = document.getElementById('expense-split-type').value;
-        if (!desc || isNaN(amount) || amount <= 0) return alert('Bitte fülle alle Felder korrekt aus.');
+        const errorEl = $('expense-error');
+        const id = $('editing-expense-id').value;
+        const desc = $('expense-desc').value.trim();
+        const amount = parseAmount($('expense-amount').value);
+        if (isNaN(amount) || amount <= 0) { errorEl.textContent = 'Bitte einen Betrag eingeben.'; return; }
+        if (!desc) { errorEl.textContent = 'Wofür war die Ausgabe?'; return; }
         const splits = {};
-        if (type === 'equal') { const share = amount / WG_DATA.flatmates.length; WG_DATA.flatmates.forEach(n => splits[n] = share); }
-        else {
+        if (splitType === 'equal') {
+            const share = amount / WG_DATA.flatmates.length;
+            WG_DATA.flatmates.forEach(n => splits[n] = share);
+        } else {
             let total = 0;
-            document.querySelectorAll('.split-input').forEach(input => { const val = parseFloat(input.value) || 0; splits[input.dataset.user] = val; total += val; });
-            if (Math.abs(total - amount) > 0.05) return alert('Summe der Anteile stimmt nicht mit Gesamtbetrag überein!');
+            document.querySelectorAll('.split-input').forEach(input => {
+                const val = parseAmount(input.value) || 0;
+                splits[input.dataset.user] = val;
+                total += val;
+            });
+            if (Math.abs(total - amount) > 0.05) {
+                errorEl.textContent = `Die Anteile ergeben ${money.format(total)}, nicht ${money.format(amount)}.`;
+                return;
+            }
         }
-        const body = { description: desc, amount, paidBy: payer, splits };
+        const body = { description: desc, amount, paidBy: selectedPayer, splits };
         try {
             const result = id
                 ? await apiJson(`/api/expenses/${encodeURIComponent(id)}`, 'PUT', body)
                 : await apiJson('/api/expenses', 'POST', body);
             if (result.success) { closeModal(); loadFinances(); }
-            else alert(result.message || 'Fehler beim Speichern.');
-        } catch (err) { alert('Fehler beim Speichern.'); }
+            else errorEl.textContent = result.message || 'Fehler beim Speichern.';
+        } catch (err) { errorEl.textContent = 'Fehler beim Speichern.'; }
     }
 
     // --- Profile Logic ---
-    // welcome: einmalige Einrichtung nach dem ersten Login (alles freiwillig)
-    function showProfile({ welcome = false } = {}) {
+    function renderProfile() {
         const user = publicUsers[currentUser] || {};
-        document.getElementById('profile-title').textContent = welcome ? `Willkommen, ${currentUser}!` : 'Dein Profil';
-        document.getElementById('profile-hint').style.display = welcome ? 'block' : 'none';
-        document.getElementById('profile-password-btn').style.display = welcome ? 'none' : 'block';
-        document.getElementById('profile-paypal-input').value = user.paypal || '';
-        document.getElementById('profile-phone-input').value = user.phone || '';
-        setProfilePicPreview(user.profilePic || '');
-        document.getElementById('profile-feedback').textContent = '';
-        document.getElementById('profile-error').textContent = '';
-        openModal(profileModal);
-        // Einrichtung gilt als erledigt, sobald sie einmal gezeigt wurde – auch wenn man sie schließt
-        if (welcome) apiJson('/api/me/profile', 'PUT', {}).catch(() => {});
+        $('profile-avatar').outerHTML = avatarHtml(currentUser, 'avatar-xl', { id: 'profile-avatar' });
+        $('profile-name').textContent = currentUser;
+        $('profile-pic-btn').textContent = user.profilePic ? 'Foto ändern' : 'Foto hinzufügen';
+        $('profile-pic-remove-btn').hidden = !user.profilePic;
+        $('profile-paypal-input').value = user.paypal || '';
+        $('profile-phone-input').value = user.phone || '';
+        setProfileStatus('Änderungen werden automatisch gesichert.');
     }
 
-    function setProfilePicPreview(src) {
-        const preview = document.getElementById('profile-pic-preview');
-        const placeholder = document.getElementById('profile-pic-placeholder');
-        preview.src = src;
-        preview.style.display = src ? 'block' : 'none';
-        placeholder.style.display = src ? 'none' : 'flex';
+    function setProfileStatus(text, isError = false) {
+        const el = $('profile-status');
+        el.textContent = text;
+        el.style.color = isError ? 'var(--red-text)' : '';
+    }
+
+    // Jede Änderung im Profil wird sofort gesichert (wie in den iOS-Einstellungen)
+    async function saveProfileFields(fields) {
+        try {
+            const result = await apiJson('/api/me/profile', 'PUT', fields);
+            if (!result.success) { setProfileStatus(result.message || 'Fehler beim Speichern.', true); return; }
+            await fetchPublicUsers();
+            renderProfile();
+            setProfileStatus('Gesichert.');
+        } catch (err) { setProfileStatus('Fehler beim Speichern.', true); }
+    }
+
+    function pickProfilePic(target) {
+        picTarget = target;
+        $('profile-pic-input').click();
     }
 
     // Bild im Browser auf 256x256 verkleinern, damit es klein genug für den Server ist
@@ -784,32 +1017,59 @@ document.addEventListener('DOMContentLoaded', () => {
             const side = Math.min(img.width, img.height);
             canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
             URL.revokeObjectURL(url);
-            setProfilePicPreview(canvas.toDataURL('image/jpeg', 0.85));
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            if (picTarget === 'welcome') {
+                welcomePic = dataUrl;
+                renderWelcomeAvatar();
+            } else {
+                saveProfileFields({ profilePic: dataUrl });
+            }
         };
         img.onerror = () => { URL.revokeObjectURL(url); alert('Bild konnte nicht geladen werden.'); };
         img.src = url;
     }
 
-    async function saveProfile() {
-        const paypal = document.getElementById('profile-paypal-input').value.trim();
-        const phone = document.getElementById('profile-phone-input').value.trim();
-        const preview = document.getElementById('profile-pic-preview');
-        const profilePic = preview.style.display === 'block' ? preview.src : '';
-        const errorEl = document.getElementById('profile-error');
-
-        try {
-            const result = await apiJson('/api/me/profile', 'PUT', { paypal, phone, profilePic });
-            if (result.success) {
-                errorEl.textContent = '';
-                document.getElementById('profile-feedback').textContent = 'Profil gespeichert!';
-                fetchPublicUsers();
-                setTimeout(closeModal, 1000);
-            } else {
-                errorEl.textContent = result.message || 'Fehler beim Speichern.';
-            }
-        } catch (err) { errorEl.textContent = 'Fehler beim Speichern.'; }
-    }
-
     // --- Helpers ---
     function esc(str) { const d = document.createElement('div'); d.textContent = String(str ?? ''); return d.innerHTML.replace(/"/g, '&quot;'); }
+
+    // Farbe nach Platz in der WG; ehemalige Bewohner und Admin bleiben grau
+    function avatarColor(name) {
+        const index = WG_DATA.flatmates.indexOf(name);
+        return index < 0 ? '' : `c${index % AVATAR_COLORS}`;
+    }
+
+    function initial(name) {
+        return (Array.from(String(name || '?'))[0] || '?').toUpperCase();
+    }
+
+    // Avatar als HTML: Profilbild, falls vorhanden, sonst farbiger Kreis mit Anfangsbuchstabe
+    function avatarHtml(name, sizeClass = '', { id = '', extraClass = '', badge = false, photo = true, src } = {}) {
+        const pic = src !== undefined ? src : (photo ? publicUsers[name]?.profilePic : '');
+        const content = pic ? `<img src="${esc(pic)}" alt="">` : esc(initial(name));
+        return `<span ${id ? `id="${id}" ` : ''}class="avatar ${sizeClass} ${avatarColor(name)} ${extraClass}" aria-hidden="true">${content}${badge ? ICON_BADGE : ''}</span>`;
+    }
+
+    function fillAvatar(el, name) {
+        const pic = publicUsers[name]?.profilePic;
+        if (pic) {
+            const img = document.createElement('img');
+            img.src = pic;
+            img.alt = '';
+            el.appendChild(img);
+        } else {
+            el.textContent = initial(name);
+        }
+    }
+
+    function parseAmount(value) {
+        return parseFloat(String(value).replace(/\s/g, '').replace(',', '.'));
+    }
+
+    function roundCents(value) {
+        return Math.round(value * 100) / 100;
+    }
+
+    function balanceClass(value) {
+        return value > 0.005 ? 'positive' : value < -0.005 ? 'negative' : '';
+    }
 });

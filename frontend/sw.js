@@ -1,7 +1,7 @@
 // Service Worker: macht die Seite installierbar und zeigt sie auch ohne Netz an.
 // Strategie "Netzwerk zuerst": Updates kommen sofort an, der Cache ist nur der Fallback.
 // API-Aufrufe (/api/...) werden nie gecacht.
-const CACHE = 'palast-v1';
+const CACHE = 'palast-v2';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/data.js', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {

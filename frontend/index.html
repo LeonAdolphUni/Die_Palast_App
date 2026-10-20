@@ -7,7 +7,7 @@
     <!-- Erlaubt nur eigene Skripte (kein eingeschleuster Code), Bilder nur von hier oder als Data-URL -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Die Palast App</title>
-    <meta name="description" content="Die Palast App – Putzplan & Einkaufsliste">
+    <meta name="description" content="Die Palast App – Putzplan, Einkauf & Finanzen der WG">
 
     <!-- Installierbar als App (Home-Bildschirm auf iPhone & Android) -->
     <link rel="manifest" href="manifest.webmanifest">
@@ -20,317 +20,550 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Palast">
 
-    <link rel="stylesheet" href="style.css?v=35">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=40">
 </head>
 
 <body>
     <div id="app">
 
-        <!-- Login View -->
-        <div id="login-view" class="view active">
-            <div class="login-container">
-                <div class="glass-card login-card">
-                    <h1 class="login-title">Die Palast App</h1>
-                    <p class="login-subtitle">Melde dich an, um fortzufahren.</p>
-                    <div class="user-grid" id="user-grid"></div>
-
-                    <div id="password-section" style="display: none; margin-top: 2rem;">
-                        <p id="password-prompt" class="password-label"></p>
-                        <input type="password" id="password-input" class="input" placeholder="Passwort" autocomplete="current-password">
-                        <button id="login-submit-btn" class="btn btn-primary btn-full" style="margin-top: 1rem;">Anmelden</button>
-                        <button id="login-back-btn" class="btn-link" style="margin-top: 1rem;">Zurück</button>
-                        <p id="login-error" class="error-text"></p>
+        <!-- Login: Wer bist du? -->
+        <div id="login-view" class="view view-centered active">
+            <div class="onboard">
+                <header class="onboard-header">
+                    <div class="app-logo">
+                        <svg viewBox="100 80 312 336" role="img" aria-label="Palast-Logo">
+                            <g fill="#FFFFFF">
+                                <rect x="136" y="260" width="240" height="140"/>
+                                <rect x="112" y="180" width="80" height="220"/>
+                                <rect x="320" y="180" width="80" height="220"/>
+                                <rect x="216" y="140" width="80" height="120"/>
+                                <rect x="112" y="150" width="20" height="30"/><rect x="142" y="150" width="20" height="30"/><rect x="172" y="150" width="20" height="30"/>
+                                <rect x="320" y="150" width="20" height="30"/><rect x="350" y="150" width="20" height="30"/><rect x="380" y="150" width="20" height="30"/>
+                                <polygon points="256,88 304,140 208,140"/>
+                            </g>
+                            <g fill="#1470E4">
+                                <rect x="232" y="336" width="48" height="64"/>
+                                <circle cx="256" cy="336" r="24"/>
+                                <circle cx="256" cy="200" r="14"/>
+                                <rect x="144" y="220" width="16" height="36"/>
+                                <rect x="352" y="220" width="16" height="36"/>
+                            </g>
+                        </svg>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Setup View: erster Login bzw. nach Passwort-Reset durch den Admin -->
-        <div id="setup-view" class="view">
-            <div class="login-container">
-                <div class="glass-card login-card">
-                    <h1 class="login-title" id="setup-title">Willkommen</h1>
-                    <p class="login-subtitle" id="setup-subtitle">Lege dein eigenes Passwort fest.</p>
-                    <input type="password" id="setup-password" class="input" placeholder="Neues Passwort (mind. 8 Zeichen)" autocomplete="new-password">
-                    <input type="password" id="setup-password-repeat" class="input" placeholder="Passwort wiederholen" autocomplete="new-password" style="margin-top: 1rem;">
-                    <button id="setup-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Passwort speichern</button>
-                    <button id="setup-logout-btn" class="btn-link" style="margin-top: 1rem;">Abmelden</button>
-                    <p id="setup-error" class="error-text"></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Menu View -->
-        <div id="menu-view" class="view">
-            <nav class="navbar glass-nav">
-                <span class="navbar-title">Die Palast App</span>
-                <div class="navbar-right">
-                    <span id="menu-user-name" class="navbar-user"></span>
-                    <button id="menu-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
-                </div>
-            </nav>
-            <main class="page">
-                <div class="page-header">
-                </div>
-                <div class="menu-grid">
-                    <button class="menu-card glass-card" id="menu-putzplan-btn">
-                        <h2 class="menu-card-title">Putzplan</h2>
-                    </button>
-                    <button class="menu-card glass-card" id="menu-shopping-btn">
-                        <h2 class="menu-card-title">Einkauf</h2>
-                    </button>
-                    <button class="menu-card glass-card" id="menu-finance-btn">
-                        <h2 class="menu-card-title">Finanzen</h2>
-                    </button>
-                    <button class="menu-card glass-card" id="menu-profile-btn">
-                        <h2 class="menu-card-title">Profil</h2>
-                    </button>
-                    <button class="menu-card glass-card" id="menu-admin-btn" style="display: none;">
-                        <h2 class="menu-card-title">Admin</h2>
-                    </button>
-                </div>
-            </main>
-        </div>
-
-        <!-- Putzplan View -->
-        <div id="putzplan-view" class="view">
-            <nav class="navbar glass-nav">
-                <button id="putzplan-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <span class="navbar-title">Putzplan</span>
-                <div class="navbar-right">
-                    <button id="putzplan-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
-                </div>
-            </nav>
-            <main class="page">
-                <header class="week-header">
-                    <button id="prev-week-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
-                    <div class="week-info">
-                        <h2 id="current-week-title">Diese Woche</h2>
-                        <p id="current-week-date" class="subtitle"></p>
+                    <div>
+                        <h1 class="title-2">Die Palast App</h1>
+                        <p class="lead">Melde dich an, um loszulegen.</p>
                     </div>
-                    <button id="next-week-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="9 18 15 12 9 6"/></svg></button>
                 </header>
 
-                <div class="my-task glass-card highlight-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="margin: 0;">Deine Aufgabe</h3>
-                        <label class="checkbox-container">
-                            <input type="checkbox" id="task-done-checkbox">
-                            <span class="checkmark"></span>
-                            Erledigt
+                <section class="group-section">
+                    <h2 class="group-header">Wer bist du?</h2>
+                    <div class="group" id="user-list"></div>
+                </section>
+
+                <div class="group">
+                    <button type="button" class="row row-button" id="login-admin-btn">
+                        <span class="row-icon icon-gray" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.5 4 5.6v6c0 4.9 3.4 9.1 8 10 4.6-.9 8-5.1 8-10v-6z"/></svg></span>
+                        <span class="row-body"><span class="row-title">Admin</span><span class="chevron" aria-hidden="true"></span></span>
+                    </button>
+                </div>
+
+                <p class="footnote onboard-foot">Erstellt von Andi &amp; Leon</p>
+            </div>
+        </div>
+
+        <!-- Login: Passwort eingeben -->
+        <div id="password-view" class="view view-centered">
+            <div class="onboard">
+                <button type="button" class="circle-btn back-btn" id="login-back-btn" aria-label="Zurück">
+                    <svg width="11" height="18" viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5 2 8.5l6 7"/></svg>
+                </button>
+                <header class="onboard-header">
+                    <span id="login-avatar" class="avatar avatar-xl"></span>
+                    <div>
+                        <h1 class="title-2" id="login-hello">Hallo</h1>
+                        <p class="lead">Gib dein Passwort ein.</p>
+                    </div>
+                </header>
+                <form id="login-form" class="stack" autocomplete="on">
+                    <!-- Unsichtbares Namensfeld, damit Passwort-Manager den Login zuordnen können -->
+                    <input type="text" id="login-username" name="username" autocomplete="username" class="visually-hidden" tabindex="-1" aria-hidden="true">
+                    <div class="group">
+                        <label class="field">
+                            <span class="field-label">Passwort</span>
+                            <input type="password" id="password-input" name="password" autocomplete="current-password" required>
                         </label>
                     </div>
-                    <div class="task-content">
-                        
-                        <div class="task-details">
-                            <h4 id="my-task-title">Lade...</h4>
-                            <p id="my-task-desc"></p>
-                        </div>
+                    <p id="login-error" class="error-text" role="alert"></p>
+                    <button type="submit" class="btn btn-primary">Anmelden</button>
+                </form>
+                <p class="footnote onboard-foot">Passwort vergessen? Der Admin kann es für dich zurücksetzen.</p>
+            </div>
+        </div>
+
+        <!-- Erster Login bzw. nach Passwort-Reset durch den Admin -->
+        <div id="setup-view" class="view view-centered">
+            <div class="onboard">
+                <header class="onboard-header">
+                    <span class="app-logo app-logo-sm" aria-hidden="true">
+                        <svg width="34" height="34" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M7 10V7.5a5 5 0 0 1 10 0V10h.5A1.5 1.5 0 0 1 19 11.5v8a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-8A1.5 1.5 0 0 1 6.5 10zm2 0h6V7.5a3 3 0 0 0-6 0z"/></svg>
+                    </span>
+                    <div>
+                        <h1 class="title-2" id="setup-title">Willkommen</h1>
+                        <p class="lead" id="setup-subtitle">Lege dein eigenes Passwort fest.</p>
                     </div>
-                </div>
-
-                <h3 class="section-title">Alle Aufgaben</h3>
-                <div class="all-tasks-grid" id="all-tasks-grid"></div>
-            </main>
+                </header>
+                <form id="setup-form">
+                    <div class="group">
+                        <label class="field">
+                            <span class="field-label field-label-wide">Neu</span>
+                            <input type="password" id="setup-password" autocomplete="new-password" placeholder="Mind. 8 Zeichen">
+                        </label>
+                        <label class="field">
+                            <span class="field-label field-label-wide">Bestätigen</span>
+                            <input type="password" id="setup-password-repeat" autocomplete="new-password" placeholder="Wiederholen">
+                        </label>
+                    </div>
+                    <ul class="checklist" aria-label="Anforderungen">
+                        <li id="setup-check-length">Mindestens 8 Zeichen</li>
+                        <li id="setup-check-match">Beide Eingaben stimmen überein</li>
+                    </ul>
+                    <p id="setup-error" class="error-text" role="alert"></p>
+                    <div class="onboard-actions">
+                        <div class="step-dots" id="setup-steps" role="img" aria-label="Schritt 1 von 2"><span class="active"></span><span></span></div>
+                        <button type="submit" class="btn btn-primary" id="setup-save-btn">Weiter</button>
+                        <button type="button" class="btn btn-plain" id="setup-logout-btn">Abmelden</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
-        <!-- Shopping View -->
-        <div id="shopping-view" class="view">
-            <nav class="navbar glass-nav">
-                <button id="shopping-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <span class="navbar-title">Einkauf</span>
-                <div class="navbar-right">
-                    <button id="shopping-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
+        <!-- Einmalige Profil-Einrichtung nach dem ersten Login (alles freiwillig) -->
+        <div id="welcome-view" class="view view-centered">
+            <div class="onboard">
+                <header class="onboard-header onboard-header-tight">
+                    <span id="welcome-avatar" class="avatar avatar-xl"></span>
+                    <button type="button" class="btn-link" id="welcome-pic-btn">Foto hinzufügen</button>
+                    <h1 class="title-2">Dein Profil</h1>
+                    <p class="lead">So erkennen dich die anderen. Alles ist freiwillig und lässt sich später ändern.</p>
+                </header>
+                <div class="group">
+                    <label class="field">
+                        <span class="field-label field-label-wide">PayPal.me</span>
+                        <input type="text" id="welcome-paypal" placeholder="Name" maxlength="80" autocomplete="off">
+                    </label>
+                    <label class="field">
+                        <span class="field-label field-label-wide">Telefon</span>
+                        <input type="tel" id="welcome-phone" placeholder="+49 …" maxlength="30" autocomplete="tel">
+                    </label>
                 </div>
-            </nav>
+                <p class="group-footer">Mit deinem PayPal-Namen können dir die anderen Schulden direkt überweisen.</p>
+                <p id="welcome-error" class="error-text" role="alert"></p>
+                <div class="onboard-actions">
+                    <div class="step-dots" role="img" aria-label="Schritt 2 von 2"><span></span><span class="active"></span></div>
+                    <button type="button" class="btn btn-primary" id="welcome-save-btn">Fertig</button>
+                    <button type="button" class="btn btn-plain" id="welcome-skip-btn">Später</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Übersicht -->
+        <div id="home-view" class="view app-view">
             <main class="page">
-                <div class="input-group">
-                    <input type="text" id="shopping-input" class="input" placeholder="Produkt hinzufügen...">
-                    <button id="shopping-add-btn" class="btn btn-primary">Hinzufügen</button>
+                <header class="page-header">
+                    <div>
+                        <span class="eyebrow" id="home-date"></span>
+                        <h1 class="large-title">Übersicht</h1>
+                    </div>
+                    <button type="button" class="avatar avatar-md avatar-button" id="home-avatar" data-tab="profile" aria-label="Profil öffnen"></button>
+                </header>
+
+                <section class="card task-hero" aria-label="Deine Aufgabe">
+                    <div class="card-head">
+                        <span class="tile icon-blue" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M11 2.5l2 5.2 5.2 2-5.2 2-2 5.3-2-5.3-5.2-2 5.2-2z"/><path fill="currentColor" d="M18.5 14l1 2.6 2.5 1-2.5.9-1 2.5-1-2.5-2.5-.9 2.5-1z"/></svg></span>
+                        <span class="card-title">Putzplan</span>
+                        <span class="card-meta" id="home-week"></span>
+                    </div>
+                    <div class="task-hero-body">
+                        <span class="eyebrow">Deine Aufgabe</span>
+                        <h2 class="title-2" id="home-task-title">…</h2>
+                        <p class="secondary" id="home-task-desc"></p>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="home-task-btn"></button>
+                </section>
+
+                <div class="tile-grid">
+                    <button type="button" class="card stat-card" data-tab="finance">
+                        <span class="card-head">
+                            <span class="tile icon-green" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6.5A6.5 6.5 0 1 0 17 17.5"/><path d="M4.5 10.5h9M4.5 13.5h9"/></svg></span>
+                            <span class="card-title">Finanzen</span>
+                        </span>
+                        <span class="stat">
+                            <span class="stat-label">Dein Saldo</span>
+                            <span class="stat-value" id="home-balance">–</span>
+                        </span>
+                    </button>
+                    <button type="button" class="card stat-card" data-tab="shopping">
+                        <span class="card-head">
+                            <span class="tile icon-orange" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M2.8 3.2a1 1 0 0 0 0 2h1.5l2.3 10a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 1.9-1.5L21 7.6a1 1 0 0 0-1-1.3H6.4l-.5-2.3a1 1 0 0 0-1-.8z"/><circle fill="currentColor" cx="9" cy="20" r="1.8"/><circle fill="currentColor" cx="17.5" cy="20" r="1.8"/></svg></span>
+                            <span class="card-title">Einkauf</span>
+                        </span>
+                        <span class="stat">
+                            <span class="stat-label">Fehlt gerade</span>
+                            <span class="stat-value" id="home-shopping">–</span>
+                        </span>
+                    </button>
                 </div>
-                <div id="shopping-list" class="shopping-list"></div>
-                <p id="shopping-empty" class="empty-state" style="display: none;">Liste ist leer.</p>
+
+                <button type="button" class="card wg-card" data-tab="putzplan">
+                    <span class="card-head">
+                        <span class="tile icon-purple" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 19a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.2A5 5 0 0 1 21.5 19"/></svg></span>
+                        <span class="card-title">Die WG diese Woche</span>
+                        <span class="chevron" aria-hidden="true"></span>
+                    </span>
+                    <span class="wg-grid" id="home-wg"></span>
+                </button>
             </main>
         </div>
 
-        <!-- Finance View -->
-        <div id="finance-view" class="view">
-            <nav class="navbar glass-nav">
-                <button id="finance-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <span class="navbar-title">Finanzen</span>
-                <div class="navbar-right">
-                    <button id="finance-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
-                </div>
-            </nav>
+        <!-- Putzplan -->
+        <div id="putzplan-view" class="view app-view">
             <main class="page">
-                <div class="finance-card glass-card">
-                    <p class="subtitle">Gesamtbilanz</p>
-                    <h2 id="finance-total-balance" class="balance-amount">0.00 €</h2>
+                <h1 class="large-title">Putzplan</h1>
+
+                <div class="group week-switcher">
+                    <button type="button" id="prev-week-btn" class="circle-btn circle-btn-fill" aria-label="Vorherige Woche">
+                        <svg width="10" height="17" viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5 2 8.5l6 7"/></svg>
+                    </button>
+                    <div class="week-info">
+                        <span class="week-title" id="current-week-title">Diese Woche</span>
+                        <span class="week-date" id="current-week-date"></span>
+                    </div>
+                    <button type="button" id="next-week-btn" class="circle-btn circle-btn-fill" aria-label="Nächste Woche">
+                        <svg width="10" height="17" viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 1.5l6 7-6 7"/></svg>
+                    </button>
                 </div>
-                
-                <button id="finance-add-btn" class="btn btn-primary btn-full" style="margin: 1.5rem 0;">Neue Ausgabe</button>
 
-                <h3 class="section-title">Schulden begleichen</h3>
-                <div id="finance-debts-list" class="finance-list"></div>
+                <section class="group-section">
+                    <h2 class="group-header">Deine Aufgabe</h2>
+                    <div class="group">
+                        <div class="my-task">
+                            <span class="title-3" id="my-task-title">…</span>
+                            <span class="secondary" id="my-task-desc"></span>
+                        </div>
+                        <label class="row switch-row" id="task-done-row">
+                            <span>Erledigt</span>
+                            <span class="switch">
+                                <input type="checkbox" id="task-done-checkbox" aria-label="Aufgabe erledigt">
+                                <span class="switch-knob"></span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
 
-                <h3 class="section-title" style="margin-top: 2rem;">Letzte Ausgaben</h3>
-                <div id="finance-expenses-list" class="finance-list"></div>
+                <section class="group-section">
+                    <h2 class="group-header">Alle Aufgaben</h2>
+                    <ul class="group" id="all-tasks-list"></ul>
+                </section>
             </main>
         </div>
 
-        <!-- Admin View -->
+        <!-- Einkauf -->
+        <div id="shopping-view" class="view app-view view-white">
+            <main class="page page-flush">
+                <header class="page-header shopping-header">
+                    <h1 class="large-title tinted">Einkauf</h1>
+                    <span class="large-title tinted" id="shopping-count" aria-live="polite"></span>
+                </header>
+                <ul class="checklist-list" id="shopping-list"></ul>
+                <form class="check-row add-row" id="shopping-form">
+                    <span class="add-icon" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M12 4v16M4 12h16"/></svg></span>
+                    <label for="shopping-input" class="visually-hidden">Neuer Eintrag</label>
+                    <input type="text" id="shopping-input" placeholder="Neuer Eintrag" maxlength="100" autocomplete="off" enterkeyhint="done">
+                </form>
+                <p id="shopping-empty" class="empty-state" hidden>Alles da. Was fehlt, kommt hier rein.</p>
+            </main>
+        </div>
+
+        <!-- Finanzen -->
+        <div id="finance-view" class="view app-view">
+            <main class="page">
+                <header class="page-header">
+                    <h1 class="large-title">Finanzen</h1>
+                    <button type="button" class="circle-btn circle-btn-raised" id="finance-add-btn" aria-label="Neue Ausgabe">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg>
+                    </button>
+                </header>
+
+                <section class="card balance-card" aria-label="Dein Saldo">
+                    <span class="eyebrow">Dein Saldo</span>
+                    <span class="balance-amount" id="finance-total-balance">0,00 €</span>
+                    <span class="secondary" id="finance-balance-text"></span>
+                </section>
+
+                <section class="group-section" id="finance-debts-section">
+                    <h2 class="group-header">Offen</h2>
+                    <div class="group" id="finance-debts-list"></div>
+                </section>
+
+                <section class="group-section">
+                    <h2 class="group-header">Verlauf</h2>
+                    <ul class="group" id="finance-expenses-list"></ul>
+                    <p class="group-footer" id="finance-expenses-hint">Eigene Ausgaben antippen zum Bearbeiten.</p>
+                </section>
+            </main>
+        </div>
+
+        <!-- Profil -->
+        <div id="profile-view" class="view app-view">
+            <main class="page">
+                <h1 class="large-title">Profil</h1>
+
+                <div class="profile-head">
+                    <span id="profile-avatar" class="avatar avatar-xl"></span>
+                    <div class="profile-pic-actions">
+                        <button type="button" class="btn-link" id="profile-pic-btn">Foto ändern</button>
+                        <button type="button" class="btn-link btn-link-danger" id="profile-pic-remove-btn">Entfernen</button>
+                    </div>
+                    <span class="title-3" id="profile-name"></span>
+                    <span class="secondary">Bewohner</span>
+                </div>
+
+                <section class="group-section">
+                    <h2 class="group-header">Zahlungen &amp; Kontakt</h2>
+                    <div class="group">
+                        <label class="row">
+                            <span class="row-icon icon-blue" aria-hidden="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6.5A6.5 6.5 0 1 0 17 17.5"/><path d="M4.5 10.5h9M4.5 13.5h9"/></svg></span>
+                            <span class="row-body">
+                                <span class="row-title">PayPal.me</span>
+                                <input type="text" id="profile-paypal-input" class="row-input" placeholder="Name" maxlength="80" autocomplete="off">
+                            </span>
+                        </label>
+                        <label class="row">
+                            <span class="row-icon icon-green" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 3.5h2.7l1.5 4.1-2 1.3a11 11 0 0 0 6.3 6.3l1.3-2 4.1 1.5v2.7a2 2 0 0 1-2.1 2A15.5 15.5 0 0 1 4.6 5.6a2 2 0 0 1 2-2.1z"/></svg></span>
+                            <span class="row-body">
+                                <span class="row-title">Telefon</span>
+                                <input type="tel" id="profile-phone-input" class="row-input" placeholder="+49 …" maxlength="30" autocomplete="tel">
+                            </span>
+                        </label>
+                    </div>
+                    <p class="group-footer" id="profile-status" aria-live="polite">Änderungen werden automatisch gesichert.</p>
+                </section>
+
+                <section class="group-section">
+                    <h2 class="group-header">Sicherheit</h2>
+                    <div class="group">
+                        <button type="button" class="row row-button" id="profile-password-btn">
+                            <span class="row-icon icon-gray" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V7.5a5 5 0 0 1 10 0V10h.5A1.5 1.5 0 0 1 19 11.5v8a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-8A1.5 1.5 0 0 1 6.5 10zm2 0h6V7.5a3 3 0 0 0-6 0z"/></svg></span>
+                            <span class="row-body"><span class="row-title">Passwort ändern</span><span class="chevron" aria-hidden="true"></span></span>
+                        </button>
+                    </div>
+                </section>
+
+                <button type="button" class="btn btn-grouped btn-destructive" data-action="logout">Abmelden</button>
+                <p class="footnote">Die Palast App · Erstellt von Andi &amp; Leon</p>
+            </main>
+        </div>
+
+        <!-- Admin -->
         <div id="admin-view" class="view">
-            <nav class="navbar glass-nav">
-                <button id="admin-back-btn" class="btn-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="square"><polyline points="15 18 9 12 15 6"/></svg></button>
-                <span class="navbar-title">Admin Bereich</span>
-                <div class="navbar-right">
-                    <button id="admin-logout-btn" class="btn-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="square"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></button>
-                </div>
-            </nav>
             <main class="page">
-                <div class="glass-card" style="padding: 2rem;">
-                    <h2 class="section-title">Bewohner verwalten</h2>
-                    <p class="subtitle">Bewohner anlegen, ersetzen, löschen und Passwörter zurücksetzen.</p>
-                    <div id="admin-user-list" class="finance-list" style="margin-top: 1.5rem;"></div>
-                    <button id="admin-add-user-btn" class="btn btn-primary btn-full">Bewohner hinzufügen</button>
-                    <button id="admin-own-password-btn" class="btn btn-full" style="margin-top: 1rem;">Eigenes Passwort ändern</button>
+                <h1 class="large-title">Admin</h1>
+
+                <section class="group-section">
+                    <h2 class="group-header">Bewohner</h2>
+                    <ul class="group" id="admin-user-list"></ul>
+                    <p class="group-footer">Die Reihenfolge bestimmt die Putzplan-Rotation.</p>
+                </section>
+
+                <div class="group">
+                    <button type="button" class="row row-button tinted" id="admin-add-user-btn">
+                        <svg class="row-icon-plain" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M12 7v10M7 12h10" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/></svg>
+                        <span class="row-body"><span class="row-title">Bewohner hinzufügen</span></span>
+                    </button>
+                    <button type="button" class="row row-button" id="admin-own-password-btn">
+                        <span class="row-icon row-icon-sm icon-gray" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V7.5a5 5 0 0 1 10 0V10h.5A1.5 1.5 0 0 1 19 11.5v8a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-8A1.5 1.5 0 0 1 6.5 10zm2 0h6V7.5a3 3 0 0 0-6 0z"/></svg></span>
+                        <span class="row-body"><span class="row-title">Eigenes Passwort ändern</span><span class="chevron" aria-hidden="true"></span></span>
+                    </button>
                 </div>
+
+                <button type="button" class="btn btn-grouped btn-destructive" data-action="logout">Abmelden</button>
             </main>
         </div>
 
-        <!-- Modals -->
+        <!-- Aktionen für einen Bewohner (Admin) -->
+        <div id="context-menu" class="context-menu" role="menu" hidden>
+            <button type="button" role="menuitem" data-menu="reset">Passwort zurücksetzen
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4.5H8"/></svg>
+            </button>
+            <button type="button" role="menuitem" data-menu="replace" class="menu-gap">Ersetzen
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4-4 4"/><path d="M3 11V9a2 2 0 0 1 2-2h16"/><path d="M7 21l-4-4 4-4"/><path d="M21 13v2a2 2 0 0 1-2 2H3"/></svg>
+            </button>
+            <button type="button" role="menuitem" data-menu="delete" class="destructive">Löschen
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M9 7V4h6v3"/></svg>
+            </button>
+        </div>
+
+        <!-- Schwebende Tab-Leiste -->
+        <nav class="tab-bar" id="tab-bar" aria-label="Hauptnavigation" hidden>
+            <button type="button" class="tab" data-tab="home">
+                <svg class="tab-icon-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
+                <svg class="tab-icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11.3 2.9a1.1 1.1 0 0 1 1.4 0l8.6 7.3c.7.6.3 1.8-.7 1.8H19v8a1.5 1.5 0 0 1-1.5 1.5H14v-6h-4v6H6.5A1.5 1.5 0 0 1 5 20v-8H3.4c-1 0-1.4-1.2-.7-1.8z"/></svg>
+                <span>Übersicht</span>
+            </button>
+            <button type="button" class="tab" data-tab="putzplan">
+                <svg class="tab-icon-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M11 2.5l2 5.2 5.2 2-5.2 2-2 5.3-2-5.3-5.2-2 5.2-2z"/><path d="M18.5 14l1 2.6 2.5 1-2.5.9-1 2.5-1-2.5-2.5-.9 2.5-1z"/></svg>
+                <svg class="tab-icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 2.5l2 5.2 5.2 2-5.2 2-2 5.3-2-5.3-5.2-2 5.2-2z"/><path fill="currentColor" d="M18.5 14l1 2.6 2.5 1-2.5.9-1 2.5-1-2.5-2.5-.9 2.5-1z"/></svg>
+                <span>Putzplan</span>
+            </button>
+            <button type="button" class="tab" data-tab="shopping">
+                <svg class="tab-icon-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="20" r="1.4"/><circle cx="17.5" cy="20" r="1.4"/><path d="M2.8 4.2h2.1l2.4 10.6a1.5 1.5 0 0 0 1.5 1.2h8.4a1.5 1.5 0 0 0 1.5-1.1L20.6 7.3H5.6"/></svg>
+                <svg class="tab-icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M2.8 3.2a1 1 0 0 0 0 2h1.5l2.3 10a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 1.9-1.5L21 7.6a1 1 0 0 0-1-1.3H6.4l-.5-2.3a1 1 0 0 0-1-.8z"/><circle fill="currentColor" cx="9" cy="20" r="1.8"/><circle fill="currentColor" cx="17.5" cy="20" r="1.8"/></svg>
+                <span>Einkauf</span>
+            </button>
+            <button type="button" class="tab" data-tab="finance">
+                <svg class="tab-icon-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="M2.5 10h19"/></svg>
+                <svg class="tab-icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5.5 4.5h13a3.5 3.5 0 0 1 3.5 3.5v1H2V8a3.5 3.5 0 0 1 3.5-3.5zM2 11h20v5a3.5 3.5 0 0 1-3.5 3.5h-13A3.5 3.5 0 0 1 2 16z"/></svg>
+                <span>Finanzen</span>
+            </button>
+            <button type="button" class="tab" data-tab="profile">
+                <svg class="tab-icon-off" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7.5" r="4"/><path d="M4 20.5a8 8 0 0 1 16 0"/></svg>
+                <svg class="tab-icon-on" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle fill="currentColor" cx="12" cy="7.5" r="4.5"/><path fill="currentColor" d="M3.5 20.5a8.5 8.5 0 0 1 17 0 1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z"/></svg>
+                <span>Profil</span>
+            </button>
+        </nav>
+
+        <input type="file" id="profile-pic-input" accept="image/*" hidden>
+
+        <!-- Sheets -->
         <div id="modal-overlay" class="modal-overlay">
-            
-            <!-- Expense Modal -->
-            <div id="expense-modal" class="modal glass-card">
-                <div class="modal-header">
-                    <h3 id="expense-modal-title">Neue Ausgabe</h3>
-                    <button class="modal-close" id="expense-close-btn">&times;</button>
-                </div>
-                <div class="modal-body">
+
+            <!-- Neue Ausgabe / Ausgabe bearbeiten -->
+            <section id="expense-modal" class="sheet" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title">
+                <div class="sheet-grabber" aria-hidden="true"></div>
+                <header class="sheet-header">
+                    <button type="button" class="circle-btn circle-btn-fill modal-close" aria-label="Abbrechen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg></button>
+                    <h2 id="expense-modal-title">Neue Ausgabe</h2>
+                    <button type="button" class="circle-btn circle-btn-primary" id="expense-save-btn" aria-label="Sichern"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+                </header>
+                <div class="sheet-body">
                     <input type="hidden" id="editing-expense-id">
-                    <label class="input-label">Wofür?</label>
-                    <input type="text" id="expense-desc" class="input" placeholder="z.B. Klopapier">
-                    
-                    <label class="input-label">Betrag (€)</label>
-                    <input type="number" id="expense-amount" class="input" placeholder="0.00" step="0.01">
-                    
-                    <label class="input-label">Wer hat bezahlt?</label>
-                    <select id="expense-payer" class="input"></select>
-                    
-                    <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                        <label class="input-label" style="margin: 0;">Aufteilung</label>
-                        <select id="expense-split-type" class="input" style="width: auto;">
-                            <option value="equal">Gleichmäßig</option>
-                            <option value="custom">Individuell</option>
-                        </select>
-                    </div>
-                    
-                    <div id="expense-split-list" class="expense-split-list"></div>
-                    
-                    <button id="expense-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Speichern</button>
-                </div>
-            </div>
-
-            <!-- Profile Modal -->
-            <div id="profile-modal" class="modal glass-card">
-                <div class="modal-header">
-                    <h3 id="profile-title">Dein Profil</h3>
-                    <button class="modal-close" id="profile-close-btn">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p id="profile-hint" class="subtitle" style="display: none; margin-bottom: 1.5rem;">Alles freiwillig – du kannst es jederzeit im Profil ändern.</p>
-                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 2rem;">
-                        <div id="profile-pic-container" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: var(--border); margin-bottom: 1rem; border: 1px solid var(--border);">
-                            <img id="profile-pic-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
-                            <div id="profile-pic-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 2rem;">👤</div>
-                        </div>
-                        <input type="file" id="profile-pic-input" style="display: none;" accept="image/*">
-                        <div style="display: flex; gap: 1rem;">
-                            <button class="btn-text btn-sm" id="profile-pic-btn">Bild ändern</button>
-                            <button class="btn-text btn-sm" id="profile-pic-remove-btn">Entfernen</button>
+                    <div class="amount-field">
+                        <label for="expense-amount" class="eyebrow">Betrag</label>
+                        <div class="amount-input">
+                            <input id="expense-amount" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
+                            <span>€</span>
                         </div>
                     </div>
 
-                    <label class="input-label">Telefonnummer</label>
-                    <input type="tel" id="profile-phone-input" class="input" placeholder="z.B. +49 176 ..." maxlength="30">
+                    <div class="group">
+                        <label class="field">
+                            <span class="field-label">Wofür?</span>
+                            <input type="text" id="expense-desc" class="align-right" placeholder="z. B. Klopapier" maxlength="100" autocomplete="off">
+                        </label>
+                    </div>
 
-                    <label class="input-label">PayPal.me Name</label>
-                    <input type="text" id="profile-paypal-input" class="input" placeholder="dein_name" maxlength="80">
+                    <div>
+                        <span class="group-header">Bezahlt von</span>
+                        <div class="group payer-picker" id="expense-payer" role="radiogroup" aria-label="Bezahlt von"></div>
+                    </div>
 
-                    <button id="profile-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Profil speichern</button>
-                    <button id="profile-password-btn" class="btn btn-full" style="margin-top: 1rem;">Passwort ändern</button>
-                    <p id="profile-feedback" class="feedback-text"></p>
-                    <p id="profile-error" class="error-text"></p>
+                    <div>
+                        <span class="group-header">Aufteilung</span>
+                        <div class="segmented" role="tablist" aria-label="Aufteilung">
+                            <button type="button" role="tab" data-split="equal" aria-selected="true">Gleichmäßig</button>
+                            <button type="button" role="tab" data-split="custom" aria-selected="false">Individuell</button>
+                        </div>
+                        <ul class="group split-list" id="expense-split-list"></ul>
+                    </div>
+
+                    <p id="expense-error" class="error-text" role="alert"></p>
+                    <button type="button" class="btn btn-grouped btn-destructive" id="expense-delete-btn" hidden>Ausgabe löschen</button>
                 </div>
-            </div>
+            </section>
 
             <!-- Eigenes Passwort ändern (Bewohner & Admin) -->
-            <div id="password-modal" class="modal glass-card">
-                <div class="modal-header">
-                    <h3>Passwort ändern</h3>
-                    <button class="modal-close" id="password-close-btn">&times;</button>
+            <section id="password-modal" class="sheet sheet-compact" role="dialog" aria-modal="true" aria-labelledby="password-modal-title">
+                <div class="sheet-grabber" aria-hidden="true"></div>
+                <header class="sheet-header">
+                    <button type="button" class="circle-btn circle-btn-fill modal-close" aria-label="Abbrechen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg></button>
+                    <h2 id="password-modal-title">Passwort ändern</h2>
+                    <button type="button" class="circle-btn circle-btn-primary" id="password-save-btn" aria-label="Sichern"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+                </header>
+                <div class="sheet-body">
+                    <div class="group">
+                        <label class="field">
+                            <span class="field-label field-label-wide">Aktuell</span>
+                            <input type="password" id="password-current" autocomplete="current-password">
+                        </label>
+                        <label class="field">
+                            <span class="field-label field-label-wide">Neu</span>
+                            <input type="password" id="password-new" autocomplete="new-password" placeholder="Mind. 8 Zeichen">
+                        </label>
+                        <label class="field">
+                            <span class="field-label field-label-wide">Bestätigen</span>
+                            <input type="password" id="password-repeat" autocomplete="new-password">
+                        </label>
+                    </div>
+                    <p id="password-feedback" class="feedback-text" role="status"></p>
+                    <p id="password-error" class="error-text" role="alert"></p>
                 </div>
-                <div class="modal-body">
-                    <label class="input-label">Aktuelles Passwort</label>
-                    <input type="password" id="password-current" class="input" autocomplete="current-password">
-                    <label class="input-label">Neues Passwort (mind. 8 Zeichen)</label>
-                    <input type="password" id="password-new" class="input" autocomplete="new-password">
-                    <label class="input-label">Neues Passwort wiederholen</label>
-                    <input type="password" id="password-repeat" class="input" autocomplete="new-password">
-                    <button id="password-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Passwort speichern</button>
-                    <p id="password-feedback" class="feedback-text"></p>
-                    <p id="password-error" class="error-text"></p>
-                </div>
-            </div>
+            </section>
 
-            <!-- Admin Password Modal -->
-            <div id="admin-password-modal" class="modal glass-card">
-                <div class="modal-header">
-                    <h3 id="admin-password-title">Passwort zurücksetzen</h3>
-                    <button class="modal-close" id="admin-password-close-btn">&times;</button>
-                </div>
-                <div class="modal-body">
+            <!-- Admin: Passwort zurücksetzen -->
+            <section id="admin-password-modal" class="sheet sheet-compact" role="dialog" aria-modal="true" aria-labelledby="admin-password-title">
+                <div class="sheet-grabber" aria-hidden="true"></div>
+                <header class="sheet-header">
+                    <button type="button" class="circle-btn circle-btn-fill modal-close" aria-label="Abbrechen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg></button>
+                    <h2 id="admin-password-title">Passwort zurücksetzen</h2>
+                    <button type="button" class="circle-btn circle-btn-primary" id="admin-password-save-btn" aria-label="Zurücksetzen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+                </header>
+                <div class="sheet-body">
                     <input type="hidden" id="admin-target-user">
-                    <p class="subtitle"><span id="admin-target-name"></span> meldet sich damit an und muss danach sofort ein eigenes Passwort festlegen.</p>
-                    <label class="input-label">Vorläufiges Passwort</label>
-                    <input type="text" id="admin-new-password" class="input" placeholder="z.B. 123" autocomplete="off">
-                    <button id="admin-password-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Zurücksetzen</button>
-                    <p id="admin-password-feedback" class="feedback-text"></p>
-                    <p id="admin-password-error" class="error-text"></p>
+                    <div class="group">
+                        <label class="field">
+                            <span class="field-label field-label-wide">Vorläufig</span>
+                            <input type="text" id="admin-new-password" placeholder="z. B. 123" autocomplete="off">
+                        </label>
+                    </div>
+                    <p class="group-footer"><span id="admin-target-name"></span> meldet sich damit an und muss danach sofort ein eigenes Passwort festlegen.</p>
+                    <p id="admin-password-feedback" class="feedback-text" role="status"></p>
+                    <p id="admin-password-error" class="error-text" role="alert"></p>
                 </div>
-            </div>
+            </section>
 
-            <!-- Admin User Modal (Anlegen / Ersetzen) -->
-            <div id="admin-user-modal" class="modal glass-card">
-                <div class="modal-header">
-                    <h3 id="admin-user-title">Neuer Bewohner</h3>
-                    <button class="modal-close" id="admin-user-close-btn">&times;</button>
-                </div>
-                <div class="modal-body">
+            <!-- Admin: Bewohner anlegen / ersetzen -->
+            <section id="admin-user-modal" class="sheet sheet-compact" role="dialog" aria-modal="true" aria-labelledby="admin-user-title">
+                <div class="sheet-grabber" aria-hidden="true"></div>
+                <header class="sheet-header">
+                    <button type="button" class="circle-btn circle-btn-fill modal-close" aria-label="Abbrechen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"/></svg></button>
+                    <h2 id="admin-user-title">Neuer Bewohner</h2>
+                    <button type="button" class="circle-btn circle-btn-primary" id="admin-user-save-btn" aria-label="Sichern"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+                </header>
+                <div class="sheet-body">
                     <input type="hidden" id="admin-user-replaces">
-                    <p id="admin-user-hint" class="subtitle"></p>
-                    <label class="input-label">Name</label>
-                    <input type="text" id="admin-user-name" class="input" placeholder="z.B. Junior" maxlength="30" autocomplete="off">
-                    <label class="input-label">Startpasswort</label>
-                    <input type="text" id="admin-user-password" class="input" placeholder="z.B. 123" autocomplete="off">
-                    <p class="subtitle" style="margin-top: 0.75rem;">Beim ersten Login muss ein eigenes Passwort festgelegt werden.</p>
-                    <button id="admin-user-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Speichern</button>
-                    <p id="admin-user-error" class="error-text"></p>
+                    <div class="group">
+                        <label class="field">
+                            <span class="field-label field-label-wide">Name</span>
+                            <input type="text" id="admin-user-name" placeholder="z. B. Junior" maxlength="30" autocomplete="off">
+                        </label>
+                        <label class="field">
+                            <span class="field-label field-label-wide">Startpasswort</span>
+                            <input type="text" id="admin-user-password" placeholder="z. B. 123" autocomplete="off">
+                        </label>
+                    </div>
+                    <p class="group-footer"><span id="admin-user-hint"></span> Beim ersten Login muss ein eigenes Passwort festgelegt werden.</p>
+                    <p id="admin-user-error" class="error-text" role="alert"></p>
                 </div>
-            </div>
+            </section>
 
         </div>
 
     </div>
 
-    <footer class="creator-credits">
-        Erstellt von Andi & Leon
-    </footer>
-
-    <script src="data.js"></script>
-    <script src="app.js?v=35"></script>
+    <script src="data.js?v=40"></script>
+    <script src="app.js?v=40"></script>
 </body>
 
 </html>
