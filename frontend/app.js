@@ -352,7 +352,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function saveWelcome() {
-        const body = { paypal: $('welcome-paypal').value.trim(), phone: $('welcome-phone').value.trim(), profilePic: welcomePic };
+        // Nur Geändertes mitschicken – so wird nie ein vorhandener Wert versehentlich geleert
+        const saved = publicUsers[currentUser] || {};
+        const body = {};
+        const paypal = $('welcome-paypal').value.trim();
+        const phone = $('welcome-phone').value.trim();
+        if (paypal !== (saved.paypal || '')) body.paypal = paypal;
+        if (phone !== (saved.phone || '')) body.phone = phone;
+        if (welcomePic && welcomePic !== saved.profilePic) body.profilePic = welcomePic;
         try {
             const result = await apiJson('/api/me/profile', 'PUT', body);
             if (!result.success) { $('welcome-error').textContent = result.message || 'Fehler beim Speichern.'; return; }
