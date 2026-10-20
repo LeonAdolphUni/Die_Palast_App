@@ -797,8 +797,8 @@ document.addEventListener('DOMContentLoaded', () => {
         listEl.innerHTML = '';
         let anyEditable = false;
         list.slice().reverse().forEach(exp => {
-            // Gleiche Regel wie auf dem Server: wer die Ausgabe angelegt hat, oder Admin
-            const editable = exp.addedBy === currentUser || currentUser === ADMIN;
+            // Gleiche Regel wie auf dem Server: wer die Ausgabe angelegt hat (alte ohne addedBy: wer bezahlt hat), oder Admin
+            const editable = currentUser === ADMIN || (exp.addedBy ? exp.addedBy === currentUser : exp.paidBy === currentUser);
             anyEditable ||= editable;
             const date = new Date(exp.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
             const payer = exp.paidBy === currentUser ? 'Du' : exp.paidBy;

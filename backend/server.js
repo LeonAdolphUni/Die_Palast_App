@@ -396,8 +396,10 @@ app.post('/api/expenses', auth, (req, res) => {
     res.json({ success: true, data: newExp });
 });
 
-// Bearbeiten/Löschen darf nur, wer die Ausgabe angelegt hat (oder Admin)
-const canEditExpense = (exp, username) => username === ADMIN || exp.addedBy === username;
+// Bearbeiten/Löschen darf nur, wer die Ausgabe angelegt hat (oder Admin).
+// Alte Ausgaben ohne "addedBy" darf derjenige ändern, der bezahlt hat.
+const canEditExpense = (exp, username) =>
+    username === ADMIN || (exp.addedBy ? exp.addedBy === username : exp.paidBy === username);
 
 app.put('/api/expenses/:id', auth, (req, res) => {
     const db = readDB();
