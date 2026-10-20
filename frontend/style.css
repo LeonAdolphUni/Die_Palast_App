@@ -746,6 +746,14 @@ input:focus-visible {
     color: var(--accent);
 }
 
+.pic-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .btn-link-danger {
     color: var(--red-text);
 }

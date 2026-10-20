@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         $('setup-form').addEventListener('submit', (e) => { e.preventDefault(); saveSetupPassword(); });
         [setupPassword, setupPasswordRepeat].forEach(input => input.addEventListener('input', updateSetupChecks));
         $('setup-logout-btn').addEventListener('click', logout);
-        $('welcome-pic-btn').addEventListener('click', () => pickProfilePic('welcome'));
+        bindPicLabel('welcome-pic-btn', 'welcome');
         $('welcome-save-btn').addEventListener('click', saveWelcome);
         $('welcome-skip-btn').addEventListener('click', () => showTab('home'));
 
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Profil
         $('profile-pic-input').addEventListener('change', handleProfilePicChange);
-        $('profile-pic-btn').addEventListener('click', () => pickProfilePic('profile'));
+        bindPicLabel('profile-pic-btn', 'profile');
         $('profile-pic-remove-btn').addEventListener('click', () => saveProfileFields({ profilePic: '' }));
         $('profile-paypal-input').addEventListener('change', (e) => saveProfileFields({ paypal: e.target.value.trim() }));
         $('profile-phone-input').addEventListener('change', (e) => saveProfileFields({ phone: e.target.value.trim() }));
@@ -997,16 +997,26 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) { setProfileStatus('Fehler beim Speichern.', true); }
     }
 
-    function pickProfilePic(target) {
-        picTarget = target;
-        $('profile-pic-input').click();
+    // Die Foto-Knöpfe sind <label for="profile-pic-input">: der Tipp öffnet die Auswahl selbst
+    // (zuverlässig auch auf iOS), hier merken wir uns nur, wohin das Bild gehört
+    function bindPicLabel(id, target) {
+        const label = $(id);
+        label.addEventListener('click', () => { picTarget = target; });
+        label.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            picTarget = target;
+            $('profile-pic-input').click();
+        });
     }
 
     // Bild im Browser auf 256x256 verkleinern, damit es klein genug für den Server ist
     function handleProfilePicChange(e) {
         const file = e.target.files[0];
         e.target.value = '';
-        if (!file || !file.type.startsWith('image/')) return;
+        if (!file) return;
+        // iOS liefert bei manchen Fotos (z. B. aus iCloud) keinen Dateityp – dann trotzdem versuchen
+        if (file.type && !file.type.startsWith('image/')) { alert('Bitte ein Bild auswählen.'); return; }
         const img = new Image();
         // Als data:-URL laden – blob:-URLs blockiert die Content-Security-Policy (img-src 'self' data:)
         const reader = new FileReader();

@@ -21,7 +21,7 @@
     <meta name="apple-mobile-web-app-title" content="Palast">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=41">
+    <link rel="stylesheet" href="style.css?v=42">
 </head>
 
 <body>
@@ -144,7 +144,7 @@
             <div class="onboard">
                 <header class="onboard-header onboard-header-tight">
                     <span id="welcome-avatar" class="avatar avatar-xl"></span>
-                    <button type="button" class="btn-link" id="welcome-pic-btn">Foto hinzufügen</button>
+                    <label for="profile-pic-input" class="btn-link pic-label" id="welcome-pic-btn" role="button" tabindex="0">Foto hinzufügen</label>
                     <h1 class="title-2">Dein Profil</h1>
                     <p class="lead">So erkennen dich die anderen. Alles ist freiwillig und lässt sich später ändern.</p>
                 </header>
@@ -323,7 +323,7 @@
                 <div class="profile-head">
                     <span id="profile-avatar" class="avatar avatar-xl"></span>
                     <div class="profile-pic-actions">
-                        <button type="button" class="btn-link" id="profile-pic-btn">Foto ändern</button>
+                        <label for="profile-pic-input" class="btn-link pic-label" id="profile-pic-btn" role="button" tabindex="0">Foto ändern</label>
                         <button type="button" class="btn-link btn-link-danger" id="profile-pic-remove-btn">Entfernen</button>
                     </div>
                     <span class="title-3" id="profile-name"></span>
@@ -434,7 +434,8 @@
             </button>
         </nav>
 
-        <input type="file" id="profile-pic-input" accept="image/*" hidden>
+        <!-- Nicht per display:none verstecken: iOS öffnet die Fotoauswahl sonst nicht zuverlässig -->
+        <input type="file" id="profile-pic-input" class="visually-hidden" accept="image/*" tabindex="-1">
 
         <!-- Sheets -->
         <div id="modal-overlay" class="modal-overlay">
@@ -562,8 +563,8 @@
 
     </div>
 
-    <script src="data.js?v=41"></script>
-    <script src="app.js?v=41"></script>
+    <script src="data.js?v=42"></script>
+    <script src="app.js?v=42"></script>
 </body>
 
 </html>
