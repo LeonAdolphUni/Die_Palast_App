@@ -19,10 +19,11 @@ Eine hochwertige, minimalistische Webanwendung zur Verwaltung des WG-Lebens. Ins
 - **PayPal Integration:** Schulden können direkt per PayPal.me Link beglichen werden.
 - **Verwaltung:** Eigene Ausgaben können nachträglich bearbeitet oder gelöscht werden.
 
-### 🔒 Sicherheit & Profile
-- **Persönliche Accounts:** Jeder Mitbewohner hat einen eigenen Zugang mit Passwort.
-- **Admin-Bereich:** Dedizierter Bereich für WG-weite Einstellungen.
-- **Profil-Management:** Hinterlege deinen PayPal Namen für einfache Zahlungen.
+### 🔒 Accounts & Sicherheit
+- **Erster Login:** Der Admin legt Bewohner mit einem Startpasswort an (z.B. `123`). Beim ersten Login muss jeder ein eigenes Passwort (mind. 8 Zeichen) festlegen und kann danach freiwillig Profilbild, PayPal und Telefon eintragen.
+- **Passwort vergessen:** Der Admin setzt ein vorläufiges Passwort, beim nächsten Login wird wieder ein eigenes verlangt.
+- **Admin-Bereich:** Bewohner anlegen, ersetzen (übernimmt den Platz im Putzplan), löschen, Passwörter zurücksetzen.
+- **Schutz:** Passwörter gehasht (scrypt), Sperre nach 10 Fehlversuchen, serverseitige Prüfung aller Eingaben, Content-Security-Policy.
 
 ## 🛠 Technologie-Stack
 
@@ -43,8 +44,10 @@ Die_Palast_App/
 │   └── icons/
 └── backend/
     ├── server.js              # Express-API (/api/...) + liefert frontend/ aus
-    ├── database.json
-    └── scripts/               # Hilfsskripte (Python, Excel)
+    ├── db.js                  # Datenbank-Datei lesen/schreiben, Migration
+    ├── passwords.js           # Passwort-Hashing
+    ├── database.json          # Live-Daten – NICHT im Repo, wird beim ersten Start angelegt
+    └── scripts/               # Hilfsskripte (Notfall-Reset, Python, Excel)
 ```
 
 ## 📦 Installation & Setup
@@ -61,7 +64,15 @@ Die_Palast_App/
    npm install
    npm start
    ```
-   Die App läuft dann auf `http://localhost:3000`.
+   Die App läuft dann auf `http://localhost:3000`. Beim ersten Start wird `database.json` mit den
+   Bewohnern aus `backend/db.js` angelegt – Startpasswort für alle (auch `Admin`): `123`.
+
+### Admin-Passwort vergessen?
+Direkt auf dem Server (danach den Server neu starten):
+```bash
+cd backend
+node scripts/reset-password.js Admin 123
+```
 
 ## 📱 Auf dem Handy installieren
 
@@ -74,11 +85,21 @@ Die App öffnet sich dann im Vollbild ohne Browserleiste. **Voraussetzung:** Die
 ## 🌐 Deployment (Linux Server)
 
 Auf dem Server muss dieselbe Ordnerstruktur liegen (`frontend/` neben `backend/`).
-`database.json` nur beim ersten Mal hochladen, sonst überschreibst du die Live-Daten:
+`database.json` ist nicht im Repo – die Live-Datei auf dem Server bleibt einfach liegen.
+Vor jedem Update trotzdem ein Backup davon machen.
+
+Beim ersten Start mit dieser Version werden alte Klartext-Passwörter automatisch gehasht,
+danach muss jeder (auch Admin) beim nächsten Login ein neues Passwort festlegen.
 
 ```bash
 scp -r frontend leon@derpalast.net:/var/www/derpalast/webserver/
-scp backend/server.js backend/package.json leon@derpalast.net:/var/www/derpalast/webserver/backend/
+scp backend/*.js backend/package.json backend/package-lock.json leon@derpalast.net:/var/www/derpalast/webserver/backend/
+scp -r backend/scripts leon@derpalast.net:/var/www/derpalast/webserver/backend/
+```
+
+Hinter Nginx den Node-Server nur lokal lauschen lassen, damit Port 3000 nicht von außen erreichbar ist:
+```bash
+HOST=127.0.0.1 npm start
 ```
 
 ### Nginx Reverse Proxy (Empfohlen)
@@ -89,6 +110,11 @@ server {
     listen 80;
     server_name derpalast.net;
 
+    server_tokens off;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy no-referrer always;
+
     location / {
         root /var/www/derpalast/webserver/frontend;
         index index.html;
@@ -96,7 +122,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }

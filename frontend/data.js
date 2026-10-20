@@ -1,6 +1,6 @@
 const WG_DATA = {
     startDate: "2026-04-13",
-    flatmates: ["Leon", "Andi", "Felix", "Paul", "Timo"],
+    flatmates: [], // wird vom Server geladen (/api/flatmates), im Admin-Bereich verwaltet
     roles: [
         {
             id: "k1",

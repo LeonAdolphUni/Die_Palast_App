@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Erlaubt nur eigene Skripte (kein eingeschleuster Code), Bilder nur von hier oder als Data-URL -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Die Palast App</title>
     <meta name="description" content="Die Palast App – Putzplan & Einkaufsliste">
 
@@ -18,7 +20,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Palast">
 
-    <link rel="stylesheet" href="style.css?v=34">
+    <link rel="stylesheet" href="style.css?v=35">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
@@ -35,11 +37,26 @@
 
                     <div id="password-section" style="display: none; margin-top: 2rem;">
                         <p id="password-prompt" class="password-label"></p>
-                        <input type="password" id="password-input" class="input" placeholder="Passwort">
+                        <input type="password" id="password-input" class="input" placeholder="Passwort" autocomplete="current-password">
                         <button id="login-submit-btn" class="btn btn-primary btn-full" style="margin-top: 1rem;">Anmelden</button>
                         <button id="login-back-btn" class="btn-link" style="margin-top: 1rem;">Zurück</button>
                         <p id="login-error" class="error-text"></p>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Setup View: erster Login bzw. nach Passwort-Reset durch den Admin -->
+        <div id="setup-view" class="view">
+            <div class="login-container">
+                <div class="glass-card login-card">
+                    <h1 class="login-title" id="setup-title">Willkommen</h1>
+                    <p class="login-subtitle" id="setup-subtitle">Lege dein eigenes Passwort fest.</p>
+                    <input type="password" id="setup-password" class="input" placeholder="Neues Passwort (mind. 8 Zeichen)" autocomplete="new-password">
+                    <input type="password" id="setup-password-repeat" class="input" placeholder="Passwort wiederholen" autocomplete="new-password" style="margin-top: 1rem;">
+                    <button id="setup-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Passwort speichern</button>
+                    <button id="setup-logout-btn" class="btn-link" style="margin-top: 1rem;">Abmelden</button>
+                    <p id="setup-error" class="error-text"></p>
                 </div>
             </div>
         </div>
@@ -174,8 +191,10 @@
             <main class="page">
                 <div class="glass-card" style="padding: 2rem;">
                     <h2 class="section-title">Bewohner verwalten</h2>
-                    <p class="subtitle">Passwörter deiner Mitbewohner ändern.</p>
+                    <p class="subtitle">Bewohner anlegen, ersetzen, löschen und Passwörter zurücksetzen.</p>
                     <div id="admin-user-list" class="finance-list" style="margin-top: 1.5rem;"></div>
+                    <button id="admin-add-user-btn" class="btn btn-primary btn-full">Bewohner hinzufügen</button>
+                    <button id="admin-own-password-btn" class="btn btn-full" style="margin-top: 1rem;">Eigenes Passwort ändern</button>
                 </div>
             </main>
         </div>
@@ -217,42 +236,88 @@
             <!-- Profile Modal -->
             <div id="profile-modal" class="modal glass-card">
                 <div class="modal-header">
-                    <h3>Dein Profil</h3>
+                    <h3 id="profile-title">Dein Profil</h3>
                     <button class="modal-close" id="profile-close-btn">&times;</button>
                 </div>
                 <div class="modal-body">
+                    <p id="profile-hint" class="subtitle" style="display: none; margin-bottom: 1.5rem;">Alles freiwillig – du kannst es jederzeit im Profil ändern.</p>
                     <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 2rem;">
                         <div id="profile-pic-container" style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: var(--border); margin-bottom: 1rem; border: 1px solid var(--border);">
                             <img id="profile-pic-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
                             <div id="profile-pic-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted); font-size: 2rem;">👤</div>
                         </div>
                         <input type="file" id="profile-pic-input" style="display: none;" accept="image/*">
-                        <button class="btn-text btn-sm" onclick="document.getElementById('profile-pic-input').click()">Bild ändern</button>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn-text btn-sm" id="profile-pic-btn">Bild ändern</button>
+                            <button class="btn-text btn-sm" id="profile-pic-remove-btn">Entfernen</button>
+                        </div>
                     </div>
 
                     <label class="input-label">Telefonnummer</label>
-                    <input type="text" id="profile-phone-input" class="input" placeholder="z.B. +49 176 ...">
+                    <input type="tel" id="profile-phone-input" class="input" placeholder="z.B. +49 176 ..." maxlength="30">
 
                     <label class="input-label">PayPal.me Name</label>
-                    <input type="text" id="profile-paypal-input" class="input" placeholder="dein_name">
+                    <input type="text" id="profile-paypal-input" class="input" placeholder="dein_name" maxlength="80">
 
                     <button id="profile-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Profil speichern</button>
+                    <button id="profile-password-btn" class="btn btn-full" style="margin-top: 1rem;">Passwort ändern</button>
                     <p id="profile-feedback" class="feedback-text"></p>
+                    <p id="profile-error" class="error-text"></p>
+                </div>
+            </div>
+
+            <!-- Eigenes Passwort ändern (Bewohner & Admin) -->
+            <div id="password-modal" class="modal glass-card">
+                <div class="modal-header">
+                    <h3>Passwort ändern</h3>
+                    <button class="modal-close" id="password-close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <label class="input-label">Aktuelles Passwort</label>
+                    <input type="password" id="password-current" class="input" autocomplete="current-password">
+                    <label class="input-label">Neues Passwort (mind. 8 Zeichen)</label>
+                    <input type="password" id="password-new" class="input" autocomplete="new-password">
+                    <label class="input-label">Neues Passwort wiederholen</label>
+                    <input type="password" id="password-repeat" class="input" autocomplete="new-password">
+                    <button id="password-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Passwort speichern</button>
+                    <p id="password-feedback" class="feedback-text"></p>
+                    <p id="password-error" class="error-text"></p>
                 </div>
             </div>
 
             <!-- Admin Password Modal -->
             <div id="admin-password-modal" class="modal glass-card">
                 <div class="modal-header">
-                    <h3 id="admin-password-title">Passwort ändern</h3>
+                    <h3 id="admin-password-title">Passwort zurücksetzen</h3>
                     <button class="modal-close" id="admin-password-close-btn">&times;</button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="admin-target-user">
-                    <label class="input-label">Neues Passwort für <span id="admin-target-name"></span></label>
-                    <input type="text" id="admin-new-password" class="input" placeholder="Passwort eingeben">
-                    <button id="admin-password-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Passwort speichern</button>
+                    <p class="subtitle"><span id="admin-target-name"></span> meldet sich damit an und muss danach sofort ein eigenes Passwort festlegen.</p>
+                    <label class="input-label">Vorläufiges Passwort</label>
+                    <input type="text" id="admin-new-password" class="input" placeholder="z.B. 123" autocomplete="off">
+                    <button id="admin-password-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Zurücksetzen</button>
                     <p id="admin-password-feedback" class="feedback-text"></p>
+                    <p id="admin-password-error" class="error-text"></p>
+                </div>
+            </div>
+
+            <!-- Admin User Modal (Anlegen / Ersetzen) -->
+            <div id="admin-user-modal" class="modal glass-card">
+                <div class="modal-header">
+                    <h3 id="admin-user-title">Neuer Bewohner</h3>
+                    <button class="modal-close" id="admin-user-close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="admin-user-replaces">
+                    <p id="admin-user-hint" class="subtitle"></p>
+                    <label class="input-label">Name</label>
+                    <input type="text" id="admin-user-name" class="input" placeholder="z.B. Junior" maxlength="30" autocomplete="off">
+                    <label class="input-label">Startpasswort</label>
+                    <input type="text" id="admin-user-password" class="input" placeholder="z.B. 123" autocomplete="off">
+                    <p class="subtitle" style="margin-top: 0.75rem;">Beim ersten Login muss ein eigenes Passwort festgelegt werden.</p>
+                    <button id="admin-user-save-btn" class="btn btn-primary btn-full" style="margin-top: 1.5rem;">Speichern</button>
+                    <p id="admin-user-error" class="error-text"></p>
                 </div>
             </div>
 
@@ -265,13 +330,7 @@
     </footer>
 
     <script src="data.js"></script>
-    <script src="app.js?v=33"></script>
-    <script>
-        // Funktioniert nur über HTTPS (oder localhost)
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
-        }
-    </script>
+    <script src="app.js?v=35"></script>
 </body>
 
 </html>

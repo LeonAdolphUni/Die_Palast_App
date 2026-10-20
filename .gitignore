@@ -2,3 +2,7 @@ node_modules
 .DS_Store
 *.log
 .env
+
+# Live-Daten (Passwörter, Ausgaben) gehören nicht ins Repo
+backend/database.json
+backend/database.json.tmp

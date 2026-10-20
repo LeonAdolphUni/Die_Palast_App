@@ -212,7 +212,8 @@ select.input {
 }
 
 /* Login View */
-#login-view.active {
+#login-view.active,
+#setup-view.active {
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -711,7 +712,8 @@ button {
 }
 
 /* iOS: 100vh ignoriert die Browserleiste */
-#login-view.active {
+#login-view.active,
+#setup-view.active {
     min-height: 100dvh;
 }
 
