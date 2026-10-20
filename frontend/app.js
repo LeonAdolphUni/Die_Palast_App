@@ -1011,34 +1011,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Bild im Browser auf 256x256 verkleinern, damit es klein genug für den Server ist
-    function handleProfilePicChange(e) {
+    async function handleProfilePicChange(e) {
         const file = e.target.files[0];
         e.target.value = '';
         if (!file) return;
         // iOS liefert bei manchen Fotos (z. B. aus iCloud) keinen Dateityp – dann trotzdem versuchen
         if (file.type && !file.type.startsWith('image/')) { alert('Bitte ein Bild auswählen.'); return; }
-        const img = new Image();
-        // Als data:-URL laden – blob:-URLs blockiert die Content-Security-Policy (img-src 'self' data:)
-        const reader = new FileReader();
-        reader.onload = () => { img.src = reader.result; };
-        reader.onerror = () => alert('Bild konnte nicht gelesen werden.');
-        img.onload = () => {
-            const size = 256;
-            const canvas = document.createElement('canvas');
-            canvas.width = size; canvas.height = size;
-            // Quadratisch zuschneiden (Mitte)
-            const side = Math.min(img.width, img.height);
-            canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-            if (picTarget === 'welcome') {
+        const target = picTarget;
+        const label = $(target === 'welcome' ? 'welcome-pic-btn' : 'profile-pic-btn');
+        const labelText = label.textContent;
+        label.textContent = 'Foto wird geladen …';
+        try {
+            const source = await decodeImage(file);
+            const dataUrl = squareThumbnail(source);
+            if (source.close) source.close();
+            if (target === 'welcome') {
                 welcomePic = dataUrl;
                 renderWelcomeAvatar();
             } else {
-                saveProfileFields({ profilePic: dataUrl });
+                await saveProfileFields({ profilePic: dataUrl });
             }
-        };
-        img.onerror = () => alert('Dieses Bildformat wird nicht unterstützt. Bitte ein JPG oder PNG wählen.');
-        reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Profilbild:', err);
+            alert('Dieses Foto konnte nicht geladen werden. Bitte ein anderes probieren.');
+        } finally {
+            // Bei Erfolg setzt das Neuzeichnen den Text, sonst den alten wiederherstellen
+            if (label.isConnected && label.textContent === 'Foto wird geladen …') label.textContent = labelText;
+        }
+    }
+
+    // Erst der Browser selbst (JPG, PNG, WebP, in Safari auch HEIC); klappt das nicht und ist es ein
+    // iPhone-Foto (HEIC), wird der Decoder nachgeladen (~3 MB, nur in diesem Fall)
+    async function decodeImage(file) {
+        try {
+            return await loadImageElement(file);
+        } catch (nativeError) {
+            const { isHeic, heicTo } = await import('./vendor/heic-to.js');
+            if (!(await isHeic(file))) throw nativeError;
+            return heicTo({ blob: file, type: 'bitmap' });
+        }
+    }
+
+    // Als data:-URL laden – blob:-URLs blockiert die Content-Security-Policy (img-src 'self' data:)
+    function loadImageElement(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(reader.error);
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Bildformat nicht lesbar'));
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Quadratisch zuschneiden (Mitte) und auf 256x256 verkleinern, damit es klein genug für den Server ist
+    function squareThumbnail(source) {
+        const size = 256;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const side = Math.min(source.width, source.height);
+        canvas.getContext('2d').drawImage(source, (source.width - side) / 2, (source.height - side) / 2, side, side, 0, 0, size, size);
+        return canvas.toDataURL('image/jpeg', 0.85);
     }
 
     // --- Helpers ---
