@@ -1008,7 +1008,10 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.value = '';
         if (!file || !file.type.startsWith('image/')) return;
         const img = new Image();
-        const url = URL.createObjectURL(file);
+        // Als data:-URL laden – blob:-URLs blockiert die Content-Security-Policy (img-src 'self' data:)
+        const reader = new FileReader();
+        reader.onload = () => { img.src = reader.result; };
+        reader.onerror = () => alert('Bild konnte nicht gelesen werden.');
         img.onload = () => {
             const size = 256;
             const canvas = document.createElement('canvas');
@@ -1016,7 +1019,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Quadratisch zuschneiden (Mitte)
             const side = Math.min(img.width, img.height);
             canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, size, size);
-            URL.revokeObjectURL(url);
             const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
             if (picTarget === 'welcome') {
                 welcomePic = dataUrl;
@@ -1025,8 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveProfileFields({ profilePic: dataUrl });
             }
         };
-        img.onerror = () => { URL.revokeObjectURL(url); alert('Bild konnte nicht geladen werden.'); };
-        img.src = url;
+        img.onerror = () => alert('Dieses Bildformat wird nicht unterstützt. Bitte ein JPG oder PNG wählen.');
+        reader.readAsDataURL(file);
     }
 
     // --- Helpers ---
