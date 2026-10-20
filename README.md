@@ -26,10 +26,26 @@ Eine hochwertige, minimalistische Webanwendung zur Verwaltung des WG-Lebens. Ins
 
 ## 🛠 Technologie-Stack
 
-- **Frontend:** Vanilla JavaScript, HTML5, Modern CSS (Glassmorphism, CSS Variables)
-- **Backend:** Node.js, Express Framework
-- **Datenbank:** JSON-basierte Persistenz (`database.json`)
+- **Frontend:** Vanilla JavaScript, HTML5, Modern CSS – Ordner `frontend/`
+- **PWA:** Installierbar auf iPhone & Android (Home-Bildschirm, Vollbild, eigenes Icon)
+- **Backend:** Node.js, Express Framework – Ordner `backend/`
+- **Datenbank:** JSON-basierte Persistenz (`backend/database.json`)
 - **Design:** Apple-inspiriertes Interface mit Dark Mode Support
+
+## 📁 Projektstruktur
+
+```
+Die_Palast_App/
+├── frontend/                  # Website (wird vom Backend bzw. Nginx ausgeliefert)
+│   ├── index.html, app.js, style.css, data.js
+│   ├── manifest.webmanifest   # App-Name, Icon, Farben für den Home-Bildschirm
+│   ├── sw.js                  # Service Worker (Offline-Fallback)
+│   └── icons/
+└── backend/
+    ├── server.js              # Express-API (/api/...) + liefert frontend/ aus
+    ├── database.json
+    └── scripts/               # Hilfsskripte (Python, Excel)
+```
 
 ## 📦 Installation & Setup
 
@@ -39,23 +55,30 @@ Eine hochwertige, minimalistische Webanwendung zur Verwaltung des WG-Lebens. Ins
    cd Die_Palast_App
    ```
 
-2. **Abhängigkeiten installieren:**
+2. **Server starten:**
    ```bash
+   cd backend
    npm install
-   ```
-
-3. **Server starten:**
-   ```bash
    npm start
    ```
-   Die App läuft standardmäßig auf `http://derpalast.net:3000`.
+   Die App läuft dann auf `http://localhost:3000`.
+
+## 📱 Auf dem Handy installieren
+
+- **iPhone (Safari):** Teilen-Button → „Zum Home-Bildschirm“
+- **Android (Chrome):** Menü ⋮ → „App installieren“ bzw. „Zum Startbildschirm hinzufügen“
+
+Die App öffnet sich dann im Vollbild ohne Browserleiste. **Voraussetzung:** Die Seite läuft über HTTPS
+(siehe unten) – ohne HTTPS funktionieren Service Worker und die Installation unter Android nicht.
 
 ## 🌐 Deployment (Linux Server)
 
-Falls du die App auf einem eigenen Server hostest, schiebe alle Dateien in den Web-Ordner:
+Auf dem Server muss dieselbe Ordnerstruktur liegen (`frontend/` neben `backend/`).
+`database.json` nur beim ersten Mal hochladen, sonst überschreibst du die Live-Daten:
 
 ```bash
-scp index.html app.js style.css server.js package.json database.json data.js leon@derpalast.net:/var/www/derpalast/webserver/
+scp -r frontend leon@derpalast.net:/var/www/derpalast/webserver/
+scp backend/server.js backend/package.json leon@derpalast.net:/var/www/derpalast/webserver/backend/
 ```
 
 ### Nginx Reverse Proxy (Empfohlen)
@@ -67,7 +90,7 @@ server {
     server_name derpalast.net;
 
     location / {
-        root /var/www/derpalast/webserver;
+        root /var/www/derpalast/webserver/frontend;
         index index.html;
         try_files $uri $uri/ /index.html;
     }
@@ -78,6 +101,14 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
     }
 }
+```
+
+### HTTPS (für die PWA nötig)
+Kostenloses Zertifikat mit Let's Encrypt – Certbot ergänzt die Nginx-Config automatisch:
+
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d derpalast.net
 ```
 
 ## 📝 Lizenz

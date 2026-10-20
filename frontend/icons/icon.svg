@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<rect width="512" height="512" rx="112" fill="#007AFF"/>
+<g transform="translate(256 256) scale(0.85) translate(-256 -244)">
+<rect x="136" y="260" width="240" height="140" fill="#fff"/><rect x="112" y="180" width="80" height="220" fill="#fff"/><rect x="320" y="180" width="80" height="220" fill="#fff"/><rect x="216" y="140" width="80" height="120" fill="#fff"/><rect x="112" y="150" width="20" height="30" fill="#fff"/><rect x="142" y="150" width="20" height="30" fill="#fff"/><rect x="172" y="150" width="20" height="30" fill="#fff"/><rect x="320" y="150" width="20" height="30" fill="#fff"/><rect x="350" y="150" width="20" height="30" fill="#fff"/><rect x="380" y="150" width="20" height="30" fill="#fff"/>
+<polygon points="256,88 304,140 208,140" fill="#fff"/>
+<rect x="232" y="336" width="48" height="64" fill="#007AFF"/><rect x="144" y="220" width="16" height="36" fill="#007AFF"/><rect x="352" y="220" width="16" height="36" fill="#007AFF"/><circle cx="256" cy="336" r="24" fill="#007AFF"/><circle cx="256" cy="200" r="14" fill="#007AFF"/>
+</g>
+</svg>

@@ -679,9 +679,105 @@ select.input {
     z-index: 10;
 }
 
+/* --- Mobile & Home-Bildschirm (PWA) --- */
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Kein Doppeltipp-Zoom auf Bedienelementen, Buttons nicht markierbar */
+button,
+a,
+select,
+label {
+    touch-action: manipulation;
+}
+
+button {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Mindestgröße für Touch-Ziele (Apple: 44pt) */
+.btn-icon,
+.modal-close {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* iOS: 100vh ignoriert die Browserleiste */
+#login-view.active {
+    min-height: 100dvh;
+}
+
+/* Notch / Dynamic Island im Querformat und Home-Indikator unten */
+.glass-nav {
+    padding-left: max(3rem, env(safe-area-inset-left));
+    padding-right: max(3rem, env(safe-area-inset-right));
+}
+
+.page {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+.creator-credits {
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: calc(15px + env(safe-area-inset-left));
+}
+
+/* Lange Modals (z.B. Ausgabe mit Aufteilung) bleiben scrollbar */
+.modal {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* Touch-Geräte: Hover-Effekte bleiben sonst nach dem Antippen "hängen" */
+@media (hover: none) {
+    .menu-card:hover,
+    .user-btn:hover {
+        transform: none;
+    }
+
+    .btn-icon:hover {
+        opacity: 1;
+    }
+
+    .menu-card:active,
+    .user-btn:active,
+    .btn:active {
+        transform: scale(0.97);
+        opacity: 0.8;
+        transition: transform 0.1s, opacity 0.1s;
+    }
+
+    .btn-icon:active {
+        opacity: 0.5;
+    }
+}
+
 @media (max-width: 600px) {
+    .glass-nav {
+        padding: 1rem max(1.25rem, env(safe-area-inset-right)) 1rem max(1.25rem, env(safe-area-inset-left));
+    }
+
     .page {
-        padding: 3rem 1.5rem;
+        padding: 3rem 1.5rem calc(3rem + env(safe-area-inset-bottom));
+    }
+
+    .modal-overlay {
+        padding: 0.5rem;
+    }
+
+    .modal {
+        padding: 2rem 1.5rem;
+        max-height: calc(100dvh - 1rem);
     }
 
     .page-hero-title {
