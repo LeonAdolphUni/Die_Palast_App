@@ -1019,11 +1019,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bild im Browser auf 256x256 verkleinern, damit es klein genug für den Server ist
     async function handleProfilePicChange(e) {
-        const file = e.target.files[0];
-        e.target.value = '';
+        const input = e.target;
+        const file = input.files[0];
         if (!file) return;
-        // iOS liefert bei manchen Fotos (z. B. aus iCloud) keinen Dateityp – dann trotzdem versuchen
-        if (file.type && !file.type.startsWith('image/')) { alert('Bitte ein Bild auswählen.'); return; }
+        // Kein Vorab-Check auf file.type: iOS meldet bei manchen Fotos keinen oder einen falschen Typ.
+        // Ob es ein lesbares Bild ist, entscheidet allein das Dekodieren unten.
         const target = picTarget;
         const label = $(target === 'welcome' ? 'welcome-pic-btn' : 'profile-pic-btn');
         const labelText = label.textContent;
@@ -1040,19 +1040,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('Profilbild:', err);
-            alert('Dieses Foto konnte nicht geladen werden. Bitte ein anderes probieren.');
+            alert(`Dieses Foto konnte nicht geladen werden. Bitte ein anderes probieren.\n\nDetails: ${file.type || 'unbekannter Typ'}, ${err?.name || 'Fehler'}: ${err?.message || err}`);
         } finally {
+            // Erst jetzt leeren (damit dasselbe Foto erneut gewählt werden kann): iOS kann die Datei
+            // sonst schon vor dem Lesen verwerfen
+            input.value = '';
             // Bei Erfolg setzt das Neuzeichnen den Text, sonst den alten wiederherstellen
             if (label.isConnected && label.textContent === 'Foto wird geladen …') label.textContent = labelText;
         }
     }
 
-    // Erst der Browser selbst (JPG, PNG, WebP, in Safari auch HEIC); klappt das nicht und ist es ein
-    // iPhone-Foto (HEIC), wird der Decoder nachgeladen (~3 MB, nur in diesem Fall)
+    // Erst der Browser selbst (JPG, PNG, WebP, in Safari auch HEIC); klappt das nicht, noch einmal per
+    // createImageBitmap (liest die Datei direkt, ohne riesige data:-URL – hilft bei großen iPhone-Fotos).
+    // Ist es danach immer noch nicht lesbar und ein HEIC-Foto, wird der Decoder nachgeladen (~3 MB)
     async function decodeImage(file) {
         try {
             return await loadImageElement(file);
         } catch (nativeError) {
+            if (window.createImageBitmap) {
+                try { return await createImageBitmap(file); } catch { /* weiter mit dem HEIC-Decoder */ }
+            }
             const { isHeic, heicTo } = await import('./vendor/heic-to.js');
             if (!(await isHeic(file))) throw nativeError;
             return heicTo({ blob: file, type: 'bitmap' });
