@@ -21,7 +21,7 @@
     <meta name="apple-mobile-web-app-title" content="Palast">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=51">
+    <link rel="stylesheet" href="style.css?v=53">
 </head>
 
 <body>
@@ -406,6 +406,13 @@
                 </section>
 
                 <div class="group">
+                    <button type="button" class="row row-button" id="admin-finance-btn">
+                        <span class="row-icon row-icon-sm icon-green" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 6.5A6.5 6.5 0 1 0 17 17.5"/><path d="M4.5 10.5h9M4.5 13.5h9"/></svg></span>
+                        <span class="row-body"><span class="row-title">Finanzen verwalten</span><span class="chevron" aria-hidden="true"></span></span>
+                    </button>
+                </div>
+
+                <div class="group">
                     <button type="button" class="row row-button tinted" id="admin-add-user-btn">
                         <svg class="row-icon-plain" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M12 7v10M7 12h10" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/></svg>
                         <span class="row-body"><span class="row-title">Bewohner hinzufügen</span></span>
@@ -417,6 +424,33 @@
                 </div>
 
                 <button type="button" class="btn btn-grouped btn-destructive" data-action="logout">Abmelden</button>
+            </main>
+        </div>
+
+        <!-- Admin: alle Ausgaben einsehen und verwalten -->
+        <div id="admin-finance-view" class="view">
+            <main class="page">
+                <button type="button" class="circle-btn back-btn" id="admin-finance-back-btn" aria-label="Zurück">
+                    <svg width="11" height="18" viewBox="0 0 10 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5 2 8.5l6 7"/></svg>
+                </button>
+                <header class="page-header">
+                    <h1 class="large-title">Finanzen</h1>
+                    <button type="button" class="circle-btn circle-btn-raised" id="admin-expense-add-btn" aria-label="Ausgabe hinzufügen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg>
+                    </button>
+                </header>
+
+                <section class="group-section">
+                    <h2 class="group-header">Salden</h2>
+                    <ul class="group" id="admin-balances"></ul>
+                    <p class="group-footer">Plus: bekommt Geld zurück. Minus: schuldet den anderen Geld.</p>
+                </section>
+
+                <section class="group-section">
+                    <h2 class="group-header">Alle Ausgaben</h2>
+                    <ul class="group" id="admin-expenses-list"></ul>
+                    <p class="group-footer">Antippen zum Bearbeiten oder Löschen.</p>
+                </section>
             </main>
         </div>
 
@@ -592,7 +626,7 @@
     </div>
 
     <script src="data.js?v=51"></script>
-    <script src="app.js?v=52"></script>
+    <script src="app.js?v=53"></script>
 </body>
 
 </html>

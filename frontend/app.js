@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let expenses = [];
     let selectedPayer = null;
     let splitType = 'equal';
+    let editingSplits = null;      // Aufteilung der gerade bearbeiteten Ausgabe
     let menuTarget = null;
 
     const $ = (id) => document.getElementById(id);
@@ -206,6 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Admin
         $('admin-add-user-btn').addEventListener('click', () => openAdminUserModal());
+        $('admin-finance-btn').addEventListener('click', showAdminFinances);
+        $('admin-finance-back-btn').addEventListener('click', showAdmin);
+        $('admin-expense-add-btn').addEventListener('click', () => openExpenseModal());
         $('admin-own-password-btn').addEventListener('click', openPasswordModal);
         $('admin-password-save-btn').addEventListener('click', saveAdminPassword);
         $('admin-user-save-btn').addEventListener('click', saveAdminUser);
@@ -940,8 +944,11 @@ document.addEventListener('DOMContentLoaded', () => {
         $('finance-balance-text').textContent = myBalance > 0.005 ? 'Du bekommst insgesamt Geld zurück.'
             : myBalance < -0.005 ? 'Du schuldest insgesamt Geld.' : 'Alles ausgeglichen.';
         renderDebts(balances);
+        $('finance-expenses-hint').hidden = !renderExpenseRows($('finance-expenses-list'), list);
+    }
 
-        const listEl = $('finance-expenses-list');
+    // Ausgaben als Liste (neueste zuerst); antippbar, wer sie bearbeiten darf. Gibt zurück, ob eine antippbar ist
+    function renderExpenseRows(listEl, list) {
         listEl.innerHTML = '';
         let anyEditable = false;
         list.slice().reverse().forEach(exp => {
@@ -965,7 +972,45 @@ document.addEventListener('DOMContentLoaded', () => {
             listEl.appendChild(li);
         });
         if (list.length === 0) listEl.innerHTML = '<li class="empty-row">Noch keine Ausgaben.</li>';
-        $('finance-expenses-hint').hidden = !anyEditable;
+        return anyEditable;
+    }
+
+    // Nach Speichern/Löschen die Ansicht neu laden, aus der die Ausgabe geöffnet wurde
+    function reloadExpenses() {
+        if (currentUser === ADMIN) loadAdminFinances();
+        else loadFinances();
+    }
+
+    // --- Admin: alle Ausgaben ---
+    function showAdminFinances() {
+        showView('admin-finance-view');
+        loadAdminFinances();
+    }
+
+    async function loadAdminFinances() {
+        try {
+            const result = await apiJson('/api/expenses');
+            if (result.success) renderAdminFinances(result.data);
+        } catch (err) {}
+    }
+
+    function renderAdminFinances(list) {
+        expenses = list;
+        const balances = computeBalances(list);
+        // Aktuelle Bewohner zuerst, danach ehemalige, solange sie noch etwas offen haben
+        const former = Object.keys(balances).filter(n => !WG_DATA.flatmates.includes(n) && Math.abs(balances[n]) > 0.005);
+        const listEl = $('admin-balances');
+        listEl.innerHTML = '';
+        WG_DATA.flatmates.concat(former).forEach(name => {
+            const value = roundCents(balances[name] || 0);
+            const li = document.createElement('li');
+            li.className = 'row';
+            li.innerHTML = `${avatarHtml(name, 'avatar-sm')}<span class="row-body"><span class="row-text"><span>${esc(name)}</span>
+                ${former.includes(name) ? '<span class="row-sub">ausgezogen</span>' : ''}</span>
+                <span class="row-value ${balanceClass(value)}">${signedMoney.format(value)}</span></span>`;
+            listEl.appendChild(li);
+        });
+        renderExpenseRows($('admin-expenses-list'), list);
     }
 
     function renderDebts(balances) {
@@ -1023,7 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await apiJson(`/api/expenses/${encodeURIComponent(id)}`, 'DELETE');
             if (!result.success) { $('expense-error').textContent = result.message || 'Fehler beim Löschen.'; return; }
             closeModal();
-            loadFinances();
+            reloadExpenses();
         } catch (err) { $('expense-error').textContent = 'Fehler beim Löschen.'; }
     }
 
@@ -1038,8 +1083,11 @@ document.addEventListener('DOMContentLoaded', () => {
         $('expense-amount').value = expense ? Number(expense.amount).toFixed(2).replace('.', ',') : '';
         $('expense-delete-btn').hidden = !expense;
         $('expense-error').textContent = '';
-        selectedPayer = expense ? expense.paidBy : currentUser;
-        splitType = 'equal';
+        // Der Admin zahlt nie selbst – er muss den Zahler auswählen
+        selectedPayer = expense ? expense.paidBy : (currentUser === ADMIN ? null : currentUser);
+        // Bestehende Aufteilung beibehalten (z. B. mit ehemaligen Bewohnern), statt sie still zu überschreiben
+        editingSplits = expense ? expense.splits : null;
+        splitType = expense && !isEqualSplit(expense) ? 'custom' : 'equal';
         renderPayerPicker(expense);
         renderExpenseSplits();
         openModal($('expense-modal'));
@@ -1067,18 +1115,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Gleichmäßig = genau die aktuellen Bewohner, alle mit demselben Anteil
+    function isEqualSplit(expense) {
+        const n = WG_DATA.flatmates.length;
+        const names = Object.keys(expense.splits);
+        return names.length === n && WG_DATA.flatmates.every(f => Math.abs((expense.splits[f] ?? -1) - expense.amount / n) < 0.01);
+    }
+
     function renderExpenseSplits() {
         document.querySelectorAll('[data-split]').forEach(btn => btn.setAttribute('aria-selected', String(btn.dataset.split === splitType)));
         const container = $('expense-split-list');
         const amount = parseAmount($('expense-amount').value) || 0;
         container.innerHTML = '';
-        WG_DATA.flatmates.forEach(name => {
-            const li = document.createElement('li');
-            if (splitType === 'equal') {
+        if (splitType === 'equal') {
+            WG_DATA.flatmates.forEach(name => {
+                const li = document.createElement('li');
                 li.innerHTML = `<span>${esc(name)}</span><span class="split-share">${money.format(amount / WG_DATA.flatmates.length)}</span>`;
-            } else {
-                li.innerHTML = `<label for="split-${esc(name)}">${esc(name)}</label><input type="text" inputmode="decimal" id="split-${esc(name)}" class="split-input" data-user="${esc(name)}" placeholder="0,00" autocomplete="off">`;
-            }
+                container.appendChild(li);
+            });
+            return;
+        }
+        // Individuell: beim Bearbeiten auch ehemalige Bewohner aus der alten Aufteilung, mit ihren Beträgen
+        const names = WG_DATA.flatmates.concat(Object.keys(editingSplits || {}).filter(n => !WG_DATA.flatmates.includes(n)));
+        names.forEach((name, i) => {
+            const share = editingSplits?.[name];
+            const li = document.createElement('li');
+            li.innerHTML = `<label for="split-${i}">${esc(name)}</label><input type="text" inputmode="decimal" id="split-${i}" class="split-input" data-user="${esc(name)}" placeholder="0,00" autocomplete="off"
+                value="${share ? esc(roundCents(share).toFixed(2).replace('.', ',')) : ''}">`;
             container.appendChild(li);
         });
     }
@@ -1090,6 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const amount = parseAmount($('expense-amount').value);
         if (isNaN(amount) || amount <= 0) { errorEl.textContent = 'Bitte einen Betrag eingeben.'; return; }
         if (!desc) { errorEl.textContent = 'Wofür war die Ausgabe?'; return; }
+        if (!selectedPayer) { errorEl.textContent = 'Wer hat bezahlt?'; return; }
         const splits = {};
         if (splitType === 'equal') {
             const share = amount / WG_DATA.flatmates.length;
@@ -1098,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let total = 0;
             document.querySelectorAll('.split-input').forEach(input => {
                 const val = parseAmount(input.value) || 0;
-                splits[input.dataset.user] = val;
+                if (val > 0) splits[input.dataset.user] = val;   // leere Anteile gar nicht erst speichern
                 total += val;
             });
             if (Math.abs(total - amount) > 0.05) {
@@ -1111,7 +1175,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = id
                 ? await apiJson(`/api/expenses/${encodeURIComponent(id)}`, 'PUT', body)
                 : await apiJson('/api/expenses', 'POST', body);
-            if (result.success) { closeModal(); loadFinances(); }
+            if (result.success) { closeModal(); reloadExpenses(); }
             else errorEl.textContent = result.message || 'Fehler beim Speichern.';
         } catch (err) { errorEl.textContent = 'Fehler beim Speichern.'; }
     }

@@ -1458,6 +1458,12 @@ button.card:active {
     overscroll-behavior: contain;
 }
 
+/* Nie zusammenschieben, sondern scrollen: sonst drückt der Browser auf kleinen Bildschirmen
+   Gruppen mit overflow:hidden (z. B. das Feld "Wofür?") auf 0 px Höhe zusammen */
+.sheet-body > * {
+    flex-shrink: 0;
+}
+
 .amount-field {
     display: flex;
     flex-direction: column;
