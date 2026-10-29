@@ -43,7 +43,7 @@ export async function initDB() {
     if (!fs.existsSync(DB_FILE)) {
         const users = {};
         for (const name of INITIAL_USERS) users[name] = await createUser(INITIAL_PASSWORD);
-        writeDB({ users, tasksCompleted: {}, shoppingList: [], expenses: [] });
+        writeDB({ users, tasksCompleted: {}, shoppingList: [], expenses: [], documents: [] });
         console.log(`Neue Datenbank angelegt. Startpasswort für alle: ${INITIAL_PASSWORD}`);
         return;
     }
@@ -64,7 +64,7 @@ export async function initDB() {
             if (handle !== user.paypal) { user.paypal = handle; changed = true; }
         }
     }
-    for (const key of ['shoppingList', 'expenses']) {
+    for (const key of ['shoppingList', 'expenses', 'documents']) {
         if (!Array.isArray(db[key])) { db[key] = []; changed = true; }
     }
     if (!db.tasksCompleted || typeof db.tasksCompleted !== 'object') { db.tasksCompleted = {}; changed = true; }

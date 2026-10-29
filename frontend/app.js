@@ -1,3 +1,16 @@
+// Anzeigefehler von Profilbildern einmal pro Seite ans Server-Log melden
+let avatarErrorReported = false;
+document.addEventListener('error', (e) => {
+    const el = e.target;
+    if (avatarErrorReported || el.tagName !== 'IMG' || !el.closest('.avatar')) return;
+    avatarErrorReported = true;
+    fetch('/api/client-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: 'avatarDisplay', name: 'img', message: `Bild wird nicht angezeigt: ${el.src.slice(0, 40)}` }),
+    }).catch(() => {});
+}, true);
+
 // Service Worker für die PWA (funktioniert nur über HTTPS oder localhost)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
@@ -17,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentWeekData = null;
     let selectedUserForLogin = null;
     let publicUsers = {};
+    let loginPics = {}; // Profilbilder für die Login-Auswahl (ohne Anmeldung abrufbar)
     let picTarget = 'profile';     // Wohin ein ausgewähltes Foto gehört: 'profile' oder 'welcome'
     let welcomePic = '';
     let expenses = [];
@@ -93,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function apiFetch(path, options = {}) {
         options.headers = { ...(options.headers || {}) };
         if (authToken) options.headers['Authorization'] = authToken;
-        if (options.body !== undefined) options.headers['Content-Type'] = 'application/json';
+        if (options.body !== undefined && !options.headers['Content-Type']) options.headers['Content-Type'] = 'application/json';
 
         const res = await fetch(`${API_BASE}${path}`, options);
 
@@ -118,9 +132,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bewohner-Liste kommt vom Server (Reihenfolge = Putzplan-Rotation)
     async function fetchFlatmates() {
-        const res = await fetch(`${API_BASE}/api/flatmates`);
+        const [res, picsRes] = await Promise.all([
+            fetch(`${API_BASE}/api/flatmates`),
+            fetch(`${API_BASE}/api/flatmates/pics`).catch(() => null),
+        ]);
         const result = await res.json();
         if (result.success) WG_DATA.flatmates = result.data;
+        // Bilder sind nur Zierde für die Login-Auswahl – fehlen sie, bleibt es beim Anfangsbuchstaben
+        const pics = picsRes && picsRes.ok ? await picsRes.json().catch(() => null) : null;
+        if (pics?.success) loginPics = pics.data;
     }
 
     async function fetchPublicUsers() {
@@ -158,6 +178,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Einkauf
         $('shopping-form').addEventListener('submit', (e) => { e.preventDefault(); addShoppingItem(); });
+        $('docs-input').addEventListener('change', uploadDocument);
+        $('docs-add-btn').addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            $('docs-input').click();
+        });
 
         // Finanzen
         $('finance-add-btn').addEventListener('click', () => openExpenseModal());
@@ -277,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'row row-button';
-            btn.innerHTML = `${avatarHtml(name, 'avatar-sm', { photo: false })}<span class="row-body"><span class="row-title">${esc(name)}</span><span class="chevron" aria-hidden="true"></span></span>`;
+            btn.innerHTML = `${avatarHtml(name, 'avatar-sm', { src: loginPics[name] || '' })}<span class="row-body"><span class="row-title">${esc(name)}</span><span class="chevron" aria-hidden="true"></span></span>`;
             btn.addEventListener('click', () => selectUser(name));
             userList.appendChild(btn);
         });
@@ -285,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function selectUser(name) {
         selectedUserForLogin = name;
-        $('login-avatar').outerHTML = avatarHtml(name, 'avatar-xl', { id: 'login-avatar', photo: false });
+        $('login-avatar').outerHTML = avatarHtml(name, 'avatar-xl', { id: 'login-avatar', src: loginPics[name] || '' });
         $('login-hello').textContent = `Hallo, ${name}`;
         $('login-username').value = name;
         passwordInput.value = '';
@@ -386,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
         shopping: ['shopping-view', loadShoppingList],
         finance: ['finance-view', loadFinances],
         profile: ['profile-view', renderProfile],
+        docs: ['docs-view', loadDocuments],
     };
 
     function showTab(name) {
@@ -664,16 +691,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const week = getWeekData(0);
         $('home-week').textContent = `KW ${week.isoWeek}`;
-        const [statuses, shopping, expenseList] = await Promise.all([
+        const [statuses, shopping, expenseList, docs] = await Promise.all([
             fetchTaskStatuses(week.weekKey),
             apiJson('/api/shopping').then(r => r.success ? r.data : null).catch(() => null),
             apiJson('/api/expenses').then(r => r.success ? r.data : null).catch(() => null),
+            apiJson('/api/documents').then(r => r.success ? r.data : null).catch(() => null),
         ]);
 
         renderHomeTask(week, statuses);
 
         const shoppingEl = $('home-shopping');
         shoppingEl.textContent = shopping === null ? '–' : (shopping.length === 0 ? 'Alles da' : `${shopping.length} ${shopping.length === 1 ? 'Ding' : 'Dinge'}`);
+
+        $('home-docs').textContent = docs === null ? '' : (docs.length === 0 ? 'Noch leer' : `${docs.length} ${docs.length === 1 ? 'Datei' : 'Dateien'}`);
 
         const balanceEl = $('home-balance');
         if (expenseList === null) {
@@ -768,6 +798,117 @@ document.addEventListener('DOMContentLoaded', () => {
             shoppingInput.value = '';
             loadShoppingList();
         } catch (err) {}
+    }
+
+    // --- WG-Unterlagen ---
+    const fileSize = (bytes) => bytes < 1024 * 1024
+        ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+        : `${(bytes / 1024 / 1024).toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`;
+    const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+    const DOCS_HINT = 'Mietvertrag, Rechnungen, Hausordnung … Antippen lädt die Datei herunter. Max. 10 MB pro Datei.';
+
+    function setDocsStatus(text, isError = false) {
+        const el = $('docs-status');
+        el.textContent = text || DOCS_HINT;
+        el.classList.toggle('negative', isError);
+    }
+
+    async function loadDocuments() {
+        setDocsStatus('');
+        try {
+            const result = await apiJson('/api/documents');
+            if (result.success) renderDocuments(result.data);
+        } catch (err) {
+            console.error('Unterlagen:', err);
+        }
+    }
+
+    function renderDocuments(docs) {
+        const listEl = $('docs-list');
+        listEl.innerHTML = '';
+        docs.slice().reverse().forEach(doc => {
+            const date = new Date(doc.date).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
+            const by = doc.uploadedBy === currentUser ? 'Du' : doc.uploadedBy;
+            const deletable = currentUser === ADMIN || doc.uploadedBy === currentUser;
+            const li = document.createElement('li');
+            li.className = 'row row-tall row-tappable';
+            li.innerHTML = `<span class="tile icon-gray" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
+                <span class="row-body"><span class="row-text"><span>${esc(doc.name)}</span>
+                <span class="row-sub">${esc(by)} · ${esc(date)} · ${fileSize(doc.size)}</span></span>
+                ${deletable ? '<button type="button" class="btn-link btn-link-danger doc-delete">Löschen</button>' : ''}</span>`;
+            li.tabIndex = 0;
+            li.setAttribute('role', 'button');
+            li.setAttribute('aria-label', `${doc.name} herunterladen`);
+            li.addEventListener('click', (e) => { if (!e.target.closest('.doc-delete')) downloadDocument(doc); });
+            li.addEventListener('keydown', (e) => {
+                if (e.target === li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); downloadDocument(doc); }
+            });
+            li.querySelector('.doc-delete')?.addEventListener('click', () => deleteDocument(doc));
+            listEl.appendChild(li);
+        });
+        if (docs.length === 0) listEl.innerHTML = '<li class="empty-row">Noch keine Unterlagen.</li>';
+    }
+
+    async function uploadDocument(e) {
+        const input = e.target;
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > MAX_DOCUMENT_SIZE) {
+            input.value = '';
+            return setDocsStatus(`„${file.name}“ ist zu groß (${fileSize(file.size)}). Maximal 10 MB.`, true);
+        }
+        setDocsStatus(`„${file.name}“ wird hochgeladen …`);
+        try {
+            // Als neutraler Typ schicken, sonst würde der JSON-Parser des Servers z. B. .json-Dateien abfangen
+            const res = await apiFetch('/api/documents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name) },
+                body: file,
+            });
+            const result = await res.json().catch(() => ({ success: false, message: res.status === 413 ? 'Die Datei ist zu groß.' : 'Fehler beim Hochladen.' }));
+            if (!result.success) return setDocsStatus(result.message || 'Fehler beim Hochladen.', true);
+            await loadDocuments();
+            setDocsStatus(`„${file.name}“ wurde hochgeladen.`);
+        } catch (err) {
+            setDocsStatus('Fehler beim Hochladen.', true);
+        } finally {
+            // Erst nach dem Lesen leeren: iOS Safari macht Dateien sonst unlesbar
+            input.value = '';
+        }
+    }
+
+    // Download über fetch, weil der Server den Anmelde-Token im Header braucht
+    async function downloadDocument(doc) {
+        setDocsStatus(`„${doc.name}“ wird geladen …`);
+        try {
+            const res = await apiFetch(`/api/documents/${encodeURIComponent(doc.id)}`);
+            if (!res.ok) {
+                const result = await res.json().catch(() => ({}));
+                return setDocsStatus(result.message || 'Fehler beim Herunterladen.', true);
+            }
+            const url = URL.createObjectURL(await res.blob());
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = doc.name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60_000);
+            setDocsStatus('');
+        } catch (err) {
+            setDocsStatus('Fehler beim Herunterladen.', true);
+        }
+    }
+
+    async function deleteDocument(doc) {
+        if (!confirm(`„${doc.name}“ wirklich löschen?`)) return;
+        try {
+            const result = await apiJson(`/api/documents/${encodeURIComponent(doc.id)}`, 'DELETE');
+            if (!result.success) return setDocsStatus(result.message || 'Fehler beim Löschen.', true);
+            loadDocuments();
+        } catch (err) {
+            setDocsStatus('Fehler beim Löschen.', true);
+        }
     }
 
     // --- Finance Logic ---
@@ -1022,8 +1163,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = e.target;
         const file = input.files[0];
         if (!file) return;
-        // Kein Vorab-Check auf file.type: iOS meldet bei manchen Fotos keinen oder einen falschen Typ.
-        // Ob es ein lesbares Bild ist, entscheidet allein das Dekodieren unten.
+        // iOS liefert bei manchen Fotos (z. B. aus iCloud) keinen Dateityp – dann trotzdem versuchen
+        if (file.type && !file.type.startsWith('image/')) { input.value = ''; alert('Bitte ein Bild auswählen.'); return; }
         const target = picTarget;
         const label = $(target === 'welcome' ? 'welcome-pic-btn' : 'profile-pic-btn');
         const labelText = label.textContent;
@@ -1040,44 +1181,55 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('Profilbild:', err);
-            alert(`Dieses Foto konnte nicht geladen werden. Bitte ein anderes probieren.\n\nDetails: ${file.type || 'unbekannter Typ'}, ${err?.name || 'Fehler'}: ${err?.message || err}`);
+            const detail = `${err?.name || ''} ${err?.message || err || ''}`.trim();
+            fetch(`${API_BASE}/api/client-error`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ context: 'profilePic', name: err?.name, message: err?.message || String(err), fileType: file.type, fileSize: file.size }),
+            }).catch(() => {});
+            alert(`Dieses Foto konnte nicht geladen werden. Bitte ein anderes probieren.\n\n(${detail})`);
         } finally {
-            // Erst jetzt leeren (damit dasselbe Foto erneut gewählt werden kann): iOS kann die Datei
-            // sonst schon vor dem Lesen verwerfen
+            // Erst nach dem Lesen leeren: iOS Safari macht Fotos aus der Mediathek sonst unlesbar
             input.value = '';
             // Bei Erfolg setzt das Neuzeichnen den Text, sonst den alten wiederherstellen
             if (label.isConnected && label.textContent === 'Foto wird geladen …') label.textContent = labelText;
         }
     }
 
-    // Erst der Browser selbst (JPG, PNG, WebP, in Safari auch HEIC); klappt das nicht, noch einmal per
-    // createImageBitmap (liest die Datei direkt, ohne riesige data:-URL – hilft bei großen iPhone-Fotos).
-    // Ist es danach immer noch nicht lesbar und ein HEIC-Foto, wird der Decoder nachgeladen (~3 MB)
+    // Erst der Browser selbst (JPG, PNG, WebP, in Safari auch HEIC); klappt das nicht und ist es ein
+    // iPhone-Foto (HEIC), wird der Decoder nachgeladen (~3 MB, nur in diesem Fall)
     async function decodeImage(file) {
         try {
-            return await loadImageElement(file);
+            return await decodeNative(file);
         } catch (nativeError) {
-            if (window.createImageBitmap) {
-                try { return await createImageBitmap(file); } catch { /* weiter mit dem HEIC-Decoder */ }
+            try {
+                const { isHeic, heicTo } = await import('./vendor/heic-to.js');
+                if (!(await isHeic(file))) throw nativeError;
+                return await heicTo({ blob: file, type: 'bitmap' });
+            } catch (heicError) {
+                if (heicError === nativeError) throw nativeError;
+                throw new Error(`nativ: ${nativeError?.name || ''} ${nativeError?.message || nativeError} / heic: ${heicError?.name || ''} ${heicError?.message || heicError}`);
             }
-            const { isHeic, heicTo } = await import('./vendor/heic-to.js');
-            if (!(await isHeic(file))) throw nativeError;
-            return heicTo({ blob: file, type: 'bitmap' });
         }
     }
 
-    // Als data:-URL laden – blob:-URLs blockiert die Content-Security-Policy (img-src 'self' data:)
+    // createImageBitmap dekodiert direkt aus der Datei; iOS Safari scheitert bei großen Fotos
+    // als data:-URL im <img> ("Bildformat nicht lesbar"), deshalb kein data:-Umweg mehr
+    async function decodeNative(file) {
+        if (window.createImageBitmap) {
+            try { return await createImageBitmap(file); } catch (err) { /* Fallback über <img> */ }
+        }
+        return loadImageElement(file);
+    }
+
+    // Als blob:-URL laden (die Content-Security-Policy erlaubt dafür img-src blob:)
     function loadImageElement(file) {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onerror = () => reject(reader.error);
-            reader.onload = () => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('Bildformat nicht lesbar'));
-                img.src = reader.result;
-            };
-            reader.readAsDataURL(file);
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Bildformat nicht lesbar')); };
+            img.src = url;
         });
     }
 
@@ -1107,15 +1259,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Avatar als HTML: Profilbild, falls vorhanden, sonst farbiger Kreis mit Anfangsbuchstabe
     function avatarHtml(name, sizeClass = '', { id = '', extraClass = '', badge = false, photo = true, src } = {}) {
         const pic = src !== undefined ? src : (photo ? publicUsers[name]?.profilePic : '');
-        const content = pic ? `<img src="${esc(pic)}" alt="">` : esc(initial(name));
+        const content = pic ? `<img src="${esc(picUrl(pic))}" alt="">` : esc(initial(name));
         return `<span ${id ? `id="${id}" ` : ''}class="avatar ${sizeClass} ${avatarColor(name)} ${extraClass}" aria-hidden="true">${content}${badge ? ICON_BADGE : ''}</span>`;
+    }
+
+    // Profilbilder kommen als data:-URL vom Server; iOS Safari zeigt die im <img> nicht an,
+    // deshalb einmal in eine blob:-URL umwandeln (je Bild zwischengespeichert)
+    const picUrls = new Map();
+    function picUrl(dataUrl) {
+        if (!dataUrl.startsWith('data:')) return dataUrl;
+        if (!picUrls.has(dataUrl)) {
+            try {
+                const [head, base64] = dataUrl.split(',');
+                const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                picUrls.set(dataUrl, URL.createObjectURL(new Blob([bytes], { type: head.slice(5).split(';')[0] })));
+            } catch (err) {
+                picUrls.set(dataUrl, dataUrl);
+            }
+        }
+        return picUrls.get(dataUrl);
     }
 
     function fillAvatar(el, name) {
         const pic = publicUsers[name]?.profilePic;
         if (pic) {
             const img = document.createElement('img');
-            img.src = pic;
+            img.src = picUrl(pic);
             img.alt = '';
             el.appendChild(img);
         } else {

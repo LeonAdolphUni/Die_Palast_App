@@ -1232,6 +1232,18 @@ button.card:active {
     color: var(--text-secondary);
 }
 
+/* --- Unterlagen --- */
+
+.docs-card .card-meta + .chevron {
+    margin-left: 0;
+}
+
+.doc-delete {
+    flex: none;
+    font-size: 15px;
+    padding: 8px 0 8px 8px;
+}
+
 /* --- Profil --- */
 
 .profile-head {

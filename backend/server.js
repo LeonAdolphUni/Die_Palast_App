@@ -1,8 +1,9 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
-import { ADMIN, readDB, writeDB, hasUser, createUser, paypalHandle, initDB } from './db.js';
+import { ADMIN, DB_FILE, readDB, writeDB, hasUser, createUser, paypalHandle, initDB } from './db.js';
 import { hashPassword, verifyPassword } from './passwords.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,6 +23,10 @@ const NAME_PATTERN = /^\p{L}[\p{L}\p{N} ._-]{0,29}$/u;
 const PHONE_PATTERN = /^[+0-9 ()/-]{0,30}$/;
 const IMAGE_PATTERN = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/;
 const MAX_IMAGE_LENGTH = 200_000;
+// WG-Unterlagen liegen als Dateien neben der Datenbank (im Volume), die Liste steht in db.documents
+const DOCUMENTS_DIR = path.join(path.dirname(DB_FILE), 'documents');
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+const MAX_DOCUMENT_NAME = 120;
 const WEEK_KEY_PATTERN = /^\d{4}-W-?\d{1,4}$/;
 const MAX_TEXT_LENGTH = 100;
 
@@ -255,8 +260,24 @@ app.put('/api/me/profile', auth, (req, res) => {
 // --- Bewohner ---
 
 // Öffentlich: Namen für die Login-Auswahl (ohne weitere Daten)
+// Fehler aus dem Browser (z. B. Profilbild lässt sich nicht laden) landen im Container-Log
+app.post('/api/client-error', (req, res) => {
+    const text = (value) => String(value ?? '').slice(0, 300);
+    const { context, name, message, fileType, fileSize } = req.body || {};
+    console.warn(`[client-error] ${text(context)}: ${text(name)} ${text(message)} | Datei: ${text(fileType) || '?'} ${Number(fileSize) || 0} B | ${text(req.get('user-agent'))}`);
+    res.json({ success: true });
+});
+
 app.get('/api/flatmates', (req, res) => {
     res.json({ success: true, data: flatmatesOf(readDB()) });
+});
+
+// Profilbilder für die Login-Auswahl – bewusst ohne Anmeldung, aber nur die Bilder (kein PayPal/Telefon)
+app.get('/api/flatmates/pics', (req, res) => {
+    const db = readDB();
+    const pics = {};
+    for (const name of flatmatesOf(db)) pics[name] = db.users[name].profilePic || '';
+    res.json({ success: true, data: pics });
 });
 
 app.get('/api/users/public', auth, (req, res) => {
@@ -420,6 +441,65 @@ app.delete('/api/expenses/:id', auth, (req, res) => {
     if (!canEditExpense(db.expenses[idx], req.username)) return fail(res, 403, 'Keine Berechtigung');
     db.expenses.splice(idx, 1);
     writeDB(db);
+    res.json({ success: true });
+});
+
+// --- WG-Unterlagen ---
+
+fs.mkdirSync(DOCUMENTS_DIR, { recursive: true });
+
+// Löschen darf nur, wer die Datei hochgeladen hat (oder Admin)
+const canDeleteDocument = (doc, username) => username === ADMIN || doc.uploadedBy === username;
+
+// Steuerzeichen und Pfadtrenner raus, Länge begrenzen – der Name wird nur angezeigt, nie als Pfad benutzt
+const cleanFileName = (name) => String(name).replace(/[\u0000-\u001f\u007f/\\]/g, '').trim().slice(0, MAX_DOCUMENT_NAME);
+
+app.get('/api/documents', auth, (req, res) => {
+    res.json({ success: true, data: readDB().documents });
+});
+
+// Die Datei kommt als roher Body, der Name (URL-kodiert) im Header X-File-Name
+app.post('/api/documents', auth, express.raw({ type: () => true, limit: MAX_DOCUMENT_SIZE }), (req, res) => {
+    let name;
+    try { name = cleanFileName(decodeURIComponent(req.get('X-File-Name') || '')); } catch { name = ''; }
+    if (!name) return fail(res, 400, 'Dateiname fehlt');
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) return fail(res, 400, 'Die Datei ist leer');
+
+    const doc = {
+        id: crypto.randomUUID(),
+        name,
+        size: req.body.length,
+        uploadedBy: req.username,
+        date: new Date().toISOString(),
+    };
+    fs.writeFileSync(path.join(DOCUMENTS_DIR, doc.id), req.body);
+    const db = readDB();
+    db.documents.push(doc);
+    writeDB(db);
+    res.json({ success: true, data: doc });
+});
+
+app.get('/api/documents/:id', auth, (req, res) => {
+    const doc = readDB().documents.find(d => d.id === req.params.id);
+    if (!doc) return fail(res, 404, 'Datei nicht gefunden');
+    // Immer als Download und als neutraler Typ – hochgeladene Dateien laufen so nie als Seite im Browser
+    res.set({
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(doc.name)}`,
+    });
+    res.sendFile(path.join(DOCUMENTS_DIR, doc.id), (err) => {
+        if (err && !res.headersSent) fail(res, 404, 'Datei nicht gefunden');
+    });
+});
+
+app.delete('/api/documents/:id', auth, (req, res) => {
+    const db = readDB();
+    const idx = db.documents.findIndex(d => d.id === req.params.id);
+    if (idx === -1) return fail(res, 404, 'Datei nicht gefunden');
+    if (!canDeleteDocument(db.documents[idx], req.username)) return fail(res, 403, 'Keine Berechtigung');
+    const [doc] = db.documents.splice(idx, 1);
+    writeDB(db);
+    fs.rmSync(path.join(DOCUMENTS_DIR, doc.id), { force: true });
     res.json({ success: true });
 });
 

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <!-- Erlaubt nur eigene Skripte (kein eingeschleuster Code), Bilder nur von hier oder als Data-URL -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'">
     <title>Die Palast App</title>
     <meta name="description" content="Die Palast App – Putzplan, Einkauf & Finanzen der WG">
 
@@ -21,7 +21,7 @@
     <meta name="apple-mobile-web-app-title" content="Palast">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=45">
+    <link rel="stylesheet" href="style.css?v=51">
 </head>
 
 <body>
@@ -224,6 +224,15 @@
                     </span>
                     <span class="wg-grid" id="home-wg"></span>
                 </button>
+
+                <button type="button" class="card docs-card" data-tab="docs">
+                    <span class="card-head">
+                        <span class="tile icon-gray" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></span>
+                        <span class="card-title">Unterlagen</span>
+                        <span class="card-meta" id="home-docs"></span>
+                        <span class="chevron" aria-hidden="true"></span>
+                    </span>
+                </button>
             </main>
         </div>
 
@@ -311,6 +320,25 @@
                     <h2 class="group-header">Verlauf</h2>
                     <ul class="group" id="finance-expenses-list"></ul>
                     <p class="group-footer" id="finance-expenses-hint">Eigene Ausgaben antippen zum Bearbeiten.</p>
+                </section>
+            </main>
+        </div>
+
+        <!-- Unterlagen -->
+        <div id="docs-view" class="view app-view">
+            <main class="page">
+                <header class="page-header">
+                    <h1 class="large-title">Unterlagen</h1>
+                    <label for="docs-input" class="circle-btn circle-btn-raised" id="docs-add-btn" role="button" tabindex="0" aria-label="Datei hochladen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 4.5v15M4.5 12h15"/></svg>
+                    </label>
+                </header>
+                <input type="file" id="docs-input" class="visually-hidden" tabindex="-1">
+
+                <section class="group-section">
+                    <h2 class="group-header">Dokumente der WG</h2>
+                    <ul class="group" id="docs-list"></ul>
+                    <p class="group-footer" id="docs-status" aria-live="polite">Mietvertrag, Rechnungen, Hausordnung … Antippen lädt die Datei herunter. Max. 10 MB pro Datei.</p>
                 </section>
             </main>
         </div>
@@ -563,8 +591,8 @@
 
     </div>
 
-    <script src="data.js?v=45"></script>
-    <script src="app.js?v=46"></script>
+    <script src="data.js?v=51"></script>
+    <script src="app.js?v=51"></script>
 </body>
 
 </html>
