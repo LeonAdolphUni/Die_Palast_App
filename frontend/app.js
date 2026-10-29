@@ -1163,8 +1163,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = e.target;
         const file = input.files[0];
         if (!file) return;
-        // iOS liefert bei manchen Fotos (z. B. aus iCloud) keinen Dateityp – dann trotzdem versuchen
-        if (file.type && !file.type.startsWith('image/')) { input.value = ''; alert('Bitte ein Bild auswählen.'); return; }
+        // Kein Vorab-Check auf file.type: iOS meldet bei manchen Fotos keinen oder einen falschen Typ.
+        // Ob es ein lesbares Bild ist, entscheidet allein das Dekodieren unten.
         const target = picTarget;
         const label = $(target === 'welcome' ? 'welcome-pic-btn' : 'profile-pic-btn');
         const labelText = label.textContent;
