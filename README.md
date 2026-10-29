@@ -41,7 +41,10 @@ Die_Palast_App/
 │   ├── index.html, app.js, style.css, data.js
 │   ├── manifest.webmanifest   # App-Name, Icon, Farben für den Home-Bildschirm
 │   ├── sw.js                  # Service Worker (Offline-Fallback)
-│   └── icons/
+│   ├── icons/
+│   └── vendor/                # HEIC-Decoder (nur für iPhone-Fotos nachgeladen)
+├── deploy/palast-deploy.sh    # Deploy-Skript für den Server (siehe "Automatisches Deployment")
+├── .github/workflows/         # GitHub Actions: prüfen + deployen bei jedem Push auf main
 └── backend/
     ├── server.js              # Express-API (/api/...) + liefert frontend/ aus
     ├── db.js                  # Datenbank-Datei lesen/schreiben, Migration
@@ -101,6 +104,38 @@ Hinter Nginx den Node-Server nur lokal lauschen lassen, damit Port 3000 nicht vo
 ```bash
 HOST=127.0.0.1 npm start
 ```
+
+### Automatisches Deployment (GitHub Actions)
+
+Jeder Push auf `main` startet `.github/workflows/deploy.yml`: Erst wird der Code geprüft (Syntax,
+Server startet testweise), dann verbindet sich GitHub per SSH mit dem Server und ruft
+`/usr/local/bin/palast-deploy` mit der Commit-ID auf. Das Skript holt genau diesen Commit, sichert
+die Datenbank, kopiert `frontend/` und `backend/` in den Docker-Ordner, baut den Container neu und
+prüft `/api/flatmates`. Startet der neue Stand nicht, spielt es den alten zurück.
+Manuell auslösen: GitHub → Actions → Deploy → „Run workflow“.
+
+Der SSH-Schlüssel darf auf dem Server **nur** dieses Skript starten (`restrict,command=...` in
+`authorized_keys`) – mehr kann man mit ihm nicht anstellen.
+
+**Einmalige Einrichtung auf dem Server**
+1. Repo nach `/opt/palast-src` klonen (das Docker-Setup bleibt in `/opt/palast-app`).
+2. `install -o root -g root -m 755 /opt/palast-src/deploy/palast-deploy.sh /usr/local/bin/palast-deploy`
+3. Benutzer `deploy` anlegen (Gruppe `docker`, Schreibrechte auf `/opt/palast-src`,
+   `/opt/palast-app/frontend`, `/opt/palast-app/backend`, `/opt/palast-app/data/backups`).
+4. In `~deploy/.ssh/authorized_keys`:
+   `restrict,command="/usr/local/bin/palast-deploy" ssh-ed25519 AAAA... github-actions-palast-deploy`
+
+**Secrets in GitHub** (Settings → Environments → `production`):
+
+| Secret | Inhalt |
+| --- | --- |
+| `DEPLOY_HOST` | z. B. `derpalast.net` |
+| `DEPLOY_USER` | `deploy` |
+| `DEPLOY_PORT` | SSH-Port (optional, Standard 22) |
+| `DEPLOY_SSH_KEY` | privater Schlüssel (kompletter Inhalt der Datei) |
+| `DEPLOY_KNOWN_HOSTS` | Ausgabe von `ssh-keyscan -p <port> <host>` |
+
+Solange die Secrets fehlen, wird nur geprüft und das Deployment mit einer Warnung übersprungen.
 
 ### Nginx Reverse Proxy (Empfohlen)
 Um die App über Port 80/443 (HTTP/HTTPS) ohne `:3000` zu betreiben, nutze diese Nginx-Config:

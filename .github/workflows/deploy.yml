@@ -1,0 +1,78 @@
+# Bei jedem Push auf main: Code prüfen und danach auf den Server deployen.
+# Einrichtung: siehe README, Abschnitt "Automatisches Deployment".
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+# Deployments laufen nacheinander, ein laufendes wird nie abgebrochen
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Prüfen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Abhängigkeiten installieren
+        working-directory: backend
+        run: npm ci
+
+      - name: Syntax prüfen
+        run: |
+          for f in backend/*.js backend/scripts/*.js frontend/app.js frontend/data.js frontend/sw.js; do
+            node --check "$f"
+          done
+
+      - name: Server starten und testen
+        working-directory: backend
+        run: |
+          DB_FILE="$RUNNER_TEMP/database.json" PORT=3999 node server.js &
+          for _ in $(seq 1 20); do curl -fsS http://127.0.0.1:3999/api/flatmates >/dev/null 2>&1 && break; sleep 1; done
+          curl -fsS http://127.0.0.1:3999/api/flatmates | grep -q '"success":true'
+          curl -fsS http://127.0.0.1:3999/ | grep -q 'app.js'
+          curl -fsS -o /dev/null http://127.0.0.1:3999/vendor/heic-to.js
+
+  deploy:
+    name: Auf den Server
+    needs: check
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deployen
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+        run: |
+          if [ -z "$SSH_KEY" ] || [ -z "$DEPLOY_HOST" ]; then
+            echo "::warning::Deploy-Secrets fehlen noch – Deployment übersprungen (siehe README)."
+            exit 0
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Fester Host-Schlüssel statt blind vertrauen – schützt vor einem untergeschobenen Server
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # Der Server führt per authorized_keys nur palast-deploy aus; übergeben wird nur die Commit-ID
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$GITHUB_SHA"
