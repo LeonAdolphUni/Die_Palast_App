@@ -42,6 +42,27 @@ fi
 git -C "$SRC_DIR" checkout --quiet --force --detach "$TARGET"
 log "Deploye $(git -C "$SRC_DIR" log -1 --format='%h %s')"
 
+# Schutz vor Handänderungen: Der Code in APP_DIR muss genau dem zuletzt deployten Commit entsprechen
+# (beim allerersten Lauf: dem Ziel-Commit). Wurde am Server direkt etwas geändert, brechen wir ab,
+# statt es zu überschreiben – erst ins Repo committen, dann deployen. Root kann mit FORCE=1 übergehen.
+BASE=$(cat "$APP_DIR/.deployed-commit" 2>/dev/null || echo "$TARGET")
+CHECK_DIR=$(mktemp -d)
+trap 'rm -rf "$CHECK_DIR"' EXIT
+git -C "$SRC_DIR" archive "$BASE" frontend backend | tar -x -C "$CHECK_DIR"
+DRIFT=$(for d in frontend backend; do
+    diff -rq --exclude=node_modules --exclude='database.json*' --exclude='*.bak-*' \
+        "$CHECK_DIR/$d" "$APP_DIR/$d" || true
+done | sed "s#$CHECK_DIR#repo#g; s#$APP_DIR#server#g")
+if [[ -n "$DRIFT" ]]; then
+    if [[ "${FORCE:-}" != 1 ]]; then
+        log "ABGEBROCHEN: Der Code auf dem Server weicht von Commit ${BASE:0:7} ab (Handänderung?):"
+        printf '%s\n' "$DRIFT"
+        log "Erst diese Änderungen ins Repo übernehmen, dann erneut deployen. Nichts wurde verändert."
+        exit 1
+    fi
+    log "FORCE=1 – Abweichungen vom Repo werden überschrieben."
+fi
+
 # Datenbank sichern (die letzten KEEP_DB_BACKUPS bleiben liegen)
 mkdir -p "$APP_DIR/data/backups"
 if [[ -f "$APP_DIR/data/database.json" ]]; then
@@ -49,11 +70,12 @@ if [[ -f "$APP_DIR/data/database.json" ]]; then
     ls -1t "$APP_DIR"/data/backups/database-*.json | tail -n +$((KEEP_DB_BACKUPS + 1)) | xargs -r rm --
 fi
 
-# Code kopieren – Daten und lokale Dateien im Backend bleiben unberührt
+# Code kopieren – Daten, node_modules und Sicherungskopien (*.bak-*) bleiben unberührt
 sync_code() {
     local from=$1 to=$2
-    rsync -a --delete "$from/frontend/" "$to/frontend/"
-    rsync -a --delete --exclude 'node_modules/' --exclude 'database.json*' "$from/backend/" "$to/backend/"
+    rsync -a --delete --exclude '*.bak-*' "$from/frontend/" "$to/frontend/"
+    rsync -a --delete --exclude 'node_modules/' --exclude 'database.json*' --exclude '*.bak-*' \
+        "$from/backend/" "$to/backend/"
 }
 
 build() { (cd "$APP_DIR" && docker compose up -d --build); }
